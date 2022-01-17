@@ -6,7 +6,8 @@ from rich.syntax import Syntax
 import importlib.util
 from typing import Optional, cast
 import dis
-from metadsl_python.code_data import CodeData
+from code_data.code_data import CodeData
+from rich.console import Console
 
 parser = argparse.ArgumentParser(description="Inspect Python code objects.")
 parser.add_argument("file", type=pathlib.Path, nargs="?", help="path to Python program")
@@ -23,9 +24,7 @@ parser.add_argument(
 )
 parser.add_argument("--source", action="store_true", help="print the source code")
 
-if __name__ == "__main__":
-    from rich.console import Console
-
+def main():
     args = parser.parse_args()
     file, cmd, mod, eval_, show_dis, show_source, show_dis_after = (
         args.file,

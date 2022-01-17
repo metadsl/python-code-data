@@ -37,7 +37,7 @@ class OldLineTable:
     Pre PEP 626 line number mapping
     """
 
-    items: list[LineTableItem] = field(default_factory=[])
+    items: list[LineTableItem] = field(default_factory=list)
     # TODO: Build line table properly!
     @classmethod
     def from_bytes(cls, bytes: bytes) -> OldLineTable:
