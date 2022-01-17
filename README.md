@@ -11,15 +11,8 @@ maintains the full semantics of the code object for Python 3.7-3.10.
 - Provides a CLI to introspect Python objects from the command line, with
   colored pretty printing courtesy of Rich.
 
-## Development
 
-```bash
-pip install flit
-flit install --symlink
-
-mypy code_data/
-pytest code_data/
-```
+It is meant to be used by anyone trying to understand Python code to build some sort of compiler, for tools like Numba.
 
 ## Usage
 
@@ -61,3 +54,15 @@ CodeData(
     line_table=NewLineTable(bytes_=b'\x14\x00')
 )
 ```
+
+## Development
+
+```bash
+pip install flit
+flit install --symlink
+
+mypy code_data/
+pytest code_data/
+```
+
+
