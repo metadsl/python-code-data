@@ -21,4 +21,4 @@ jobs:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
       - run: pip install -e .[test]
-      - run: pytest -v python-code-data
+      - run: pytest -v code_data
