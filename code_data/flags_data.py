@@ -21,8 +21,8 @@ def to_flags_data(flags: int) -> FlagsData:
         # Don't iterate if no flags are set
         return flags_data
     # Iterate through all flags, raising an exception if we hit any unknown ones
-    for f in enum._decompose(CodeFlag, flags)[0]:  # type: ignore
-        if f not in CodeFlag:
+    for f in enum._decompose(_CodeFlag, flags)[0]:  # type: ignore
+        if f not in _CodeFlag:
             raise ValueError(f"Flag {f} is not a known flag")
         flags_data.add(f.name)
     return flags_data
@@ -31,13 +31,13 @@ def to_flags_data(flags: int) -> FlagsData:
 def from_flags_data(flags_data: FlagsData) -> int:
     flags = 0
     for f in flags_data:
-        flags |= getattr(CodeFlag, f)
+        flags |= getattr(_CodeFlag, f)
     return flags
 
 
 # Use an IntFlag so we can convert easily from ints
 # Note that this will not raise an error on unknown flags
-CodeFlag = enum.IntFlag(  # type: ignore
+_CodeFlag = enum.IntFlag(  # type: ignore
     "CodeFlag",
     # Compiler flags
     [(name, i) for i, name in dis.COMPILER_FLAG_NAMES.items()]

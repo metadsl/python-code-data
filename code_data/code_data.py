@@ -14,6 +14,8 @@ from .flags_data import FlagsData, to_flags_data, from_flags_data
 from .dataclass_hide_default import DataclassHideDefault
 import sys
 
+__all__ = ["CodeData"]
+
 
 @dataclass
 class CodeData(DataclassHideDefault):
