@@ -18,7 +18,7 @@ class DataclassHideDefault:
             # Then return the same fields, however changing any field which
             # is set to the default to not show in the repr
             return {
-                name: set_repr_false(field)
+                name: _set_repr_false(field)
                 if field.default == getattr(self, name)
                 else field
                 for name, field in res.items()
@@ -27,7 +27,7 @@ class DataclassHideDefault:
         return res
 
 
-def set_repr_false(field: Field) -> Field:
+def _set_repr_false(field: Field) -> Field:
     # Copy the field first, so that only this instance is mutated
     new_field = copy(field)
     new_field.repr = False

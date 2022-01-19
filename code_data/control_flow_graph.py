@@ -20,6 +20,8 @@ from .instruction_data import (
 )
 
 
+
+
 def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
     instructions = list(instructions_from_bytes(b))
 
@@ -105,10 +107,10 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                     if arg.relative:
                         arg_value = (
                             target_instruction_offset - current_instruction_offset - 1
-                        ) * (1 if ATLEAST_310 else 2)
+                        ) * (1 if _ATLEAST_310 else 2)
                     else:
                         arg_value = (
-                            1 if ATLEAST_310 else 2
+                            1 if _ATLEAST_310 else 2
                         ) * target_instruction_offset
                     if not instruction.n_args_override and instrsize(
                         args[block_index, instruction_index]
@@ -192,4 +194,4 @@ ControlFlowGraph = List[List[Instruction]]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069
-ATLEAST_310 = sys.version_info >= (3, 10)
+_ATLEAST_310 = sys.version_info >= (3, 10)

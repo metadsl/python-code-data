@@ -62,4 +62,13 @@ might instead chose to compile to some alternative implementaiton before
 executing, such as high level language like SQL or a lower level langauge like
 LLVM.
 """
+from .code_data import CodeData
+from types import CodeType
 __version__ = "0.0.0"
+
+
+def code_to_data(code: CodeType) -> CodeData:
+   '''
+   Parse a code type and turn it into data.
+   '''
+   return CodeData.from_code(code)

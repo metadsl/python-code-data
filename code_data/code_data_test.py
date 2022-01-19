@@ -113,8 +113,6 @@ def module_codes() -> Iterable[tuple[str, CodeType]]:
         # Worry about it later!
         warnings.simplefilter("ignore")
         for mi in pkgutil.walk_packages(onerror=lambda _name: None):
-            if mi.name != "json.scanner":
-                continue
             loader: Loader = mi.module_finder.find_module(mi.name)  # type: ignore
             try:
                 code = loader.get_code(mi.name)  # type: ignore

@@ -30,7 +30,14 @@ test = [
     "pytest>=3.6.0",
     "pytest-xdist",
     "hypothesmith",
-    "mypy"
+    "mypy",
+    "pre-commit"
+]
+
+docs = [
+    "jupyter-book",
+    "sphinx-autoapi",
+    "sphinx-autodoc-typehints"
 ]
 
 [project.scripts]

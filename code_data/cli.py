@@ -9,6 +9,8 @@ import dis
 from code_data.code_data import CodeData
 from rich.console import Console
 
+__all__ = ["main"]
+
 parser = argparse.ArgumentParser(description="Inspect Python code objects.")
 parser.add_argument("file", type=pathlib.Path, nargs="?", help="path to Python program")
 parser.add_argument("-c", type=str, help="program passed in as string", metavar="cmd")
@@ -25,6 +27,9 @@ parser.add_argument(
 parser.add_argument("--source", action="store_true", help="print the source code")
 
 def main():
+    """
+    Parse the CLI commands and print the code data.
+    """
     args = parser.parse_args()
     file, cmd, mod, eval_, show_dis, show_source, show_dis_after = (
         args.file,

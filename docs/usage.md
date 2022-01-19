@@ -1,0 +1,198 @@
+---
+jupytext:
+  cell_metadata_filter: -all
+  formats: md:myst
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.11.5
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
+---
+
+# Usage
+
+
+## Python API
+
+The overall workflow for using the API involves some part of these steps:
+
+1. Get your hands on a [Code object](https://docs.python.org/3/reference/datamodel.html#index-55), like by using `compile`
+2. Turn it into data using [`code_to_data`](code_data.code_to_data).
+3. Modify it, traverse it, or use it for downstream analysis.
+4. Turn the `CodeData` back into a real Python code object.
+5. Execute the code object, using `exec`.
+
+### Example: Modifying Existing Bytecode
+
+In this example, we will compile some code, modify the bytecode, and then turn it back into Python code to execute.
+
+We can make a code object from a string using `compile`:
+
+```{code-cell}
+%load_ext rich
+x = True
+source_code = "print(10 + (100 if x else 10))"
+code = compile(source_code, "", "exec")
+exec(code)
+```
+
+If we look at the code object, we can see that it does have the bytecode, but its represented as byte string, which isn't very helpful:
+
+```{code-cell}
+print(code)
+print(code.co_code)
+```
+
+We could use Python's built in `dis` module to introspect the code object. This is helpful to look at it, but won't let us change it:
+
+```{code-cell}
+import dis
+dis.dis(code)
+```
+
+So instead, lets turn it into ✨data✨:
+
+```{code-cell}
+from code_data import code_to_data
+
+code_data = code_to_data(code)
+code_data
+```
+
+We can see now that we have two blocks, each with a list of instructions.
+
+Let's try to change the additions to subtractions! We can either modify the code data in place,
+or we can use `dataclasses.replace` to create a new code data:
+
+```{code-cell}
+from dataclasses import replace
+
+new_code_data = replace(
+  code_data,
+  cfg=[
+    [
+      replace(
+        instruction,
+        name='BINARY_SUBTRACT' if instruction.name == "BINARY_ADD" else instruction.name
+      ) 
+      for instruction in block
+    ]
+    for block in code_data.cfg
+  ]
+)
+new_code_data
+```
+
+Now we can turn this back into code and exec it!
+
+```{code-cell}
+new_code = new_code_data.to_code()
+exec(new_code)
+```
+
+### Example: Analyzing instruction occurances
+
+For our next example, lets do something a bit more fun. Let's load all installed modules and see what flags are most commonly used!n Let's
+sort the flags by what "level" they were defined at. For example, a module is
+at the top level, a class second level, etc.
+
+
+First we can load all the code objects for all importable modules, using
+a util written for the tests. In the tests, we use this to verify that
+our code analysis is isomporphic, meaning that when we convert to and from the
+code data, we should get back an equivalent code object.
+
+```{code-cell}
+from code_data.code_data_test import module_codes
+
+names_and_codes = list(module_codes())
+names_and_codes[:3]
+```
+
+Lets turn them all into code data:
+
+```{code-cell}
+all_code_data = [code_to_data(code) for _, code in names_and_codes]
+all_code_data[0].flags_data
+```
+
+We can see that the flags are a list of strings.
+
+Now let's analyze all of them to see which flags are most popular!
+
+```{code-cell}
+from collections import defaultdict, Counter
+from code_data import CodeData
+
+# Mapping from each level index to a counter of the flags
+flags_per_level = defaultdict(Counter)
+counts_per_level = defaultdict(lambda: 0)
+
+def process_code_data(code_data: CodeData, level: int) -> None:
+    flags_per_level[level].update(code_data.flags_data)
+    counts_per_level[level] += 1
+    for c in code_data.consts:
+        if isinstance(c, CodeData):
+            process_code_data(c, level + 1)
+
+for code_data in all_code_data:
+    process_code_data(code_data, 0)
+
+(counts_per_level, flags_per_level)
+```
+
+We can see that every top level code object has `NOFREE` set, but that isn't the case
+with some of the nested modules. We can also see one code object is nested six levels!
+
+## Command Line
+
+We provide a CLI command `python-code-data` which is useful for debugging or introspecting code objects from the command line.
+
+It contains many of the same
+flags to load Python code as the default Python CLI, including from a string (`-c`),
+from a module (`-m`), or from a path (`<file name>`). It also includes a way to
+load a string from Python code to eval it first, which is useful for generating
+test cases on the CLI of program strings.
+
+```
+$ python-code-data
+usage: python-code-data [-h] [-c cmd] [-e eval] [-m mod] [--dis] [--dis-after]
+                        [--source]
+                        [file]
+
+Inspect Python code objects.
+
+positional arguments:
+  file         path to Python program
+
+options:
+  -h, --help   show this help message and exit
+  -c cmd       program passed in as string
+  -e eval      string evalled to make program
+  -m mod       python library
+  --dis        print Python's dis analysis
+  --dis-after  print Python's dis analysis after round tripping to code-data,
+               for testing
+  --source     print the source code
+$ python-code-data -c 'x if y else z'
+CodeData(
+    flags_data={'NOFREE'},
+    cfg=[
+        [
+            Instruction(name='LOAD_NAME', arg=0),
+            Instruction(name='POP_JUMP_IF_FALSE', arg=Jump(target=1)),
+            Instruction(name='LOAD_NAME', arg=1),
+            Instruction(name='POP_TOP', arg=0),
+            Instruction(name='LOAD_CONST', arg=0),
+            Instruction(name='RETURN_VALUE', arg=0)
+        ],
+        [Instruction(name='LOAD_NAME', arg=2), Instruction(name='POP_TOP', arg=0), Instruction(name='LOAD_CONST', arg=0), Instruction(name='RETURN_VALUE', arg=0)]
+    ],
+    names=('y', 'x', 'z'),
+    line_table=NewLineTable(bytes_=b'\x14\x00')
+)
+```
