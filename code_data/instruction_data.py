@@ -5,11 +5,12 @@ Represent Python Bytecode instructions as a data structure.
 
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Iterable, Optional
-from itertools import chain
+
 import dis
 import sys
+from dataclasses import dataclass, field
+from itertools import chain
+from typing import Iterable, Optional
 
 from .dataclass_hide_default import DataclassHideDefault
 
