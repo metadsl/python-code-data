@@ -42,3 +42,10 @@ docs = [
 
 [project.scripts]
 python-code-data = "code_data.cli:main"
+
+[tool.black]
+extend-exclude = 'docs/conf\.py'
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
