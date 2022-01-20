@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import sys
 from dataclasses import dataclass, field
+from itertools import chain
 from types import CodeType
 from typing import Iterator, Union
-from itertools import chain
 
 __all__ = ["LineTable", "to_line_table", "from_line_table"]
 

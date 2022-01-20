@@ -1,18 +1,14 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from types import CodeType
 from typing import Tuple
 
 from .control_flow_graph import ControlFlowGraph, bytes_to_cfg, cfg_to_bytes, verify_cfg
-from .line_table import (
-    LineTable,
-    from_line_table,
-    to_line_table,
-)
-from .flags_data import FlagsData, to_flags_data, from_flags_data
 from .dataclass_hide_default import DataclassHideDefault
-import sys
+from .flags_data import FlagsData, from_flags_data, to_flags_data
+from .line_table import LineTable, from_line_table, to_line_table
 
 __all__ = ["CodeData"]
 

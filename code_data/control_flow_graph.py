@@ -7,19 +7,14 @@ Every instruction that is jumped to starts a new control flow block.
 """
 
 from __future__ import annotations
+
+import dis
 import sys
 from dataclasses import dataclass, field
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 from .dataclass_hide_default import DataclassHideDefault
-import dis
-from .instruction_data import (
-    instrsize,
-    instructions_from_bytes,
-    InstructionData,
-)
-
-
+from .instruction_data import InstructionData, instrsize, instructions_from_bytes
 
 
 def bytes_to_cfg(b: bytes) -> ControlFlowGraph:

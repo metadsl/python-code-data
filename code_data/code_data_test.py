@@ -1,14 +1,17 @@
 from __future__ import annotations
-from dis import _get_instructions_bytes  # type: ignore
-import pytest
-import warnings
+
 import pkgutil
+import warnings
+from datetime import timedelta
+from dis import _get_instructions_bytes  # type: ignore
 from importlib.abc import Loader
 from types import CodeType
 from typing import Iterable
-from hypothesis import given, settings, HealthCheck
+
 import hypothesmith
-from datetime import timedelta
+import pytest
+from hypothesis import HealthCheck, given, settings
+
 from .code_data import CodeData
 
 NEWLINE = "\n"

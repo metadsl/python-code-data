@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import dis
 import enum
-import __future__  # isort:skip
 from typing import Set
+
+import __future__  # isort:skip
 
 
 __all__ = ["FlagsData", "to_flags_data", "from_flags_data"]

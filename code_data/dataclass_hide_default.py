@@ -1,5 +1,5 @@
-from dataclasses import _FIELDS, Field  # type: ignore
 from copy import copy
+from dataclasses import _FIELDS, Field  # type: ignore
 
 
 class DataclassHideDefault:

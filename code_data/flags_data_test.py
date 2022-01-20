@@ -4,7 +4,7 @@ import inspect
 
 import pytest
 
-from .flags_data import to_flags_data, from_flags_data
+from .flags_data import from_flags_data, to_flags_data
 
 import __future__  # isort:skip
 

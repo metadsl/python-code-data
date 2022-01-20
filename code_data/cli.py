@@ -1,13 +1,15 @@
 import argparse
-from os import linesep
-import pathlib
-from types import CodeType
-from rich.syntax import Syntax
-import importlib.util
-from typing import Optional, cast
 import dis
-from code_data.code_data import CodeData
+import importlib.util
+import pathlib
+from os import linesep
+from types import CodeType
+from typing import Optional, cast
+
 from rich.console import Console
+from rich.syntax import Syntax
+
+from code_data.code_data import CodeData
 
 __all__ = ["main"]
 
@@ -25,6 +27,7 @@ parser.add_argument(
     help="print Python's dis analysis after round tripping to code-data, for testing",
 )
 parser.add_argument("--source", action="store_true", help="print the source code")
+
 
 def main():
     """

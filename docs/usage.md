@@ -158,41 +158,10 @@ from a module (`-m`), or from a path (`<file name>`). It also includes a way to
 load a string from Python code to eval it first, which is useful for generating
 test cases on the CLI of program strings.
 
+```{code-cell}
+! python-code-data
 ```
-$ python-code-data
-usage: python-code-data [-h] [-c cmd] [-e eval] [-m mod] [--dis] [--dis-after]
-                        [--source]
-                        [file]
 
-Inspect Python code objects.
-
-positional arguments:
-  file         path to Python program
-
-options:
-  -h, --help   show this help message and exit
-  -c cmd       program passed in as string
-  -e eval      string evalled to make program
-  -m mod       python library
-  --dis        print Python's dis analysis
-  --dis-after  print Python's dis analysis after round tripping to code-data,
-               for testing
-  --source     print the source code
-$ python-code-data -c 'x if y else z'
-CodeData(
-    flags_data={'NOFREE'},
-    cfg=[
-        [
-            Instruction(name='LOAD_NAME', arg=0),
-            Instruction(name='POP_JUMP_IF_FALSE', arg=Jump(target=1)),
-            Instruction(name='LOAD_NAME', arg=1),
-            Instruction(name='POP_TOP', arg=0),
-            Instruction(name='LOAD_CONST', arg=0),
-            Instruction(name='RETURN_VALUE', arg=0)
-        ],
-        [Instruction(name='LOAD_NAME', arg=2), Instruction(name='POP_TOP', arg=0), Instruction(name='LOAD_CONST', arg=0), Instruction(name='RETURN_VALUE', arg=0)]
-    ],
-    names=('y', 'x', 'z'),
-    line_table=NewLineTable(bytes_=b'\x14\x00')
-)
+```{code-cell}
+! python-code-data -c 'x if y else z'
 ```
