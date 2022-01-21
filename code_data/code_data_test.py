@@ -78,15 +78,17 @@ def f(x):
 def test_examples(source):
     code = compile(source, "<string>", "exec")
 
-    verify_code(code, code)
+    verify_code(code)
 
 
-def test_modules():
+def test_modules(subtests):
     # Instead of params, iterate in test so that:
     # 1. the number of tests is consistant accross python versions pleasing xdist running multiple versions
     # 2. pushing loading of all modules inside generator, so that fast samples run first
-    for name, code in module_codes():
-        verify_code(code, name)
+    for name, source, code in module_codes():
+        n_lines = len(source.splitlines())
+        with subtests.test(name, n_lines=n_lines):
+            verify_code(code)
 
 
 @given(source_code=hypothesmith.from_node())
@@ -101,10 +103,10 @@ def test_generated(source_code):
         # Ignore syntax warnings in compilation
         warnings.simplefilter("ignore")
         code = compile(source_code, "<string>", "exec")
-    verify_code(code, source_code)
+    verify_code(code)
 
 
-def module_codes() -> Iterable[tuple[str, CodeType]]:
+def module_codes() -> Iterable[tuple[str, str, CodeType]]:
     # In order to test the code_data, we try to get a sample of bytecode,
     # by walking all our packages and trying to load every module.
     # Note that although this doesn't require the code to be executable,
@@ -117,24 +119,26 @@ def module_codes() -> Iterable[tuple[str, CodeType]]:
         warnings.simplefilter("ignore")
         for mi in pkgutil.walk_packages(onerror=lambda _name: None):
             loader: Loader = mi.module_finder.find_module(mi.name)  # type: ignore
+            loader.__ne__
             try:
                 code = loader.get_code(mi.name)  # type: ignore
             except SyntaxError:
                 continue
             if code:
-                yield mi.name, code
+                source = loader.get_source(mi.name) #type: ignore
+                yield mi.name, source, code
 
 
-def verify_code(code: CodeType, label: str) -> None:
+def verify_code(code: CodeType) -> None:
     code_data = CodeData.from_code(code)
     code_data.verify()
     resulting_code = code_data.to_code()
 
     # First compare as primitives, for better diffing if they aren't equal
-    assert code_to_primitives(code) == code_to_primitives(resulting_code), label
+    assert code_to_primitives(code) == code_to_primitives(resulting_code)
 
     # Then compare objects directly, for greater equality confidence
-    assert code == resulting_code, label
+    assert code == resulting_code
     # We used to compare the marhsalled bytes as well, but this was unstable
     # due to whether the constants had refernces to them, so we disabled it
 

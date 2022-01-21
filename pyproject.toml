@@ -31,7 +31,8 @@ test = [
     "pytest-xdist",
     "hypothesmith",
     "mypy",
-    "pre-commit"
+    "pre-commit",
+    "pytest-subtests"
 ]
 
 docs = [
