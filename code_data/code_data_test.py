@@ -85,10 +85,23 @@ def test_modules(subtests):
     # Instead of params, iterate in test so that:
     # 1. the number of tests is consistant accross python versions pleasing xdist running multiple versions
     # 2. pushing loading of all modules inside generator, so that fast samples run first
+
+    # Keep a list of failures, so we can print the shortest at the end
+    # list of (name, source) tuples
+    failures: list[tuple[str, str]] = []
+    
     for name, source, code in module_codes():
-        n_lines = len(source.splitlines())
-        with subtests.test(name, n_lines=n_lines):
+        failures.append((name, source))
+        with subtests.test(name):
             verify_code(code)
+            # If we got here, then the verification succeeded, and we can remove from failures.
+            failures.pop()
+    
+    if failures:
+        # sort failures by length of source
+        name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
+        print(source)
+        assert False, f"Shortest module that failed was {name}"
 
 
 @given(source_code=hypothesmith.from_node())
