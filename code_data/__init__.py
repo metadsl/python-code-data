@@ -1,3 +1,6 @@
+"""
+Transform Python code objects into data, and vice versa.
+"""
 from types import CodeType
 
 from .code_data import CodeData
