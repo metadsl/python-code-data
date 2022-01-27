@@ -9,6 +9,9 @@ class DataclassHideDefault:
 
     This lets us control the rich output for dataclasses, since it looks
     at the `repr` of each field to know whether to display it.
+
+    TODO: Just implement rich repr to do this more obviously
+    https://rich.readthedocs.io/en/stable/pretty.html
     """
 
     def __getattribute__(self, __name: str) -> object:

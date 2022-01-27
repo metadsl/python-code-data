@@ -95,27 +95,28 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
         for block_index, block in cfg.items():
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
+                arg_value = args[block_index, instruction_index]
+                n_instructions = instruction.n_args_override or instrsize(arg_value)
+                current_instruction_offset += n_instructions
+                    
                 if isinstance(arg, Jump):
                     target_instruction_offset = block_index_to_instruction_offset[
                         arg.target
                     ]
+                    multiplier = 1 if _ATLEAST_310 else 2
                     if arg.relative:
-                        arg_value = (
-                            target_instruction_offset - current_instruction_offset - 1
-                        ) * (1 if _ATLEAST_310 else 2)
+                        new_arg_value = (
+                            target_instruction_offset - current_instruction_offset
+                        ) * multiplier
                     else:
-                        arg_value = (
-                            1 if _ATLEAST_310 else 2
-                        ) * target_instruction_offset
-                    if not instruction.n_args_override and instrsize(
-                        args[block_index, instruction_index]
-                    ) != instrsize(arg_value):
+                        new_arg_value = multiplier * target_instruction_offset
+                    # If we aren't overriding and the new size of instructions is not the same
+                    # as the old, mark this as updated, so we re-calculate block positions!
+                    if not instruction.n_args_override and n_instructions != instrsize(new_arg_value):
                         changed_instruction_lengths = True
-                    args[block_index, instruction_index] = arg_value
-                else:
-                    arg_value = args[block_index, instruction_index]
-                n_instructions = instruction.n_args_override or instrsize(arg_value)
-                current_instruction_offset += n_instructions
+                    args[block_index, instruction_index] = new_arg_value
+    
+    # Finally go assemble the bytes
     bytes_ = b""
     for block_index, block in cfg.items():
         for instruction_index, instruction in enumerate(block):
