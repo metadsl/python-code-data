@@ -113,8 +113,75 @@ def test_json():
 
     finally:
         pass""",
+            # Tests for a relative jump which has extended args
             id="notebook.tests.test_config_manager minimal case",
         ),
+        pytest.param(
+            '''"""Build a project using PEP 517 hooks.
+"""
+import argparse
+import io
+import logging
+import os
+import shutil
+
+from .envbuild import BuildEnvironment
+from .wrappers import Pep517HookCaller
+from .dirtools import tempdir, mkdir_p
+from .compat import FileNotFoundError, toml_load
+
+log = logging.getLogger(__name__)
+
+
+def validate_system():
+    pass
+
+
+def load_system():
+    pass
+
+
+def compat_system():
+    pass
+
+
+def _do_build():
+    pass
+
+
+def build(system=None):
+    pass
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    'source_dir',
+    help="A directory containing pyproject.toml",
+)
+parser.add_argument(
+    '--binary', '-b',
+    action='store_true',
+    default=False,
+)
+parser.add_argument(
+    '--source', '-s',
+    action='store_true',
+    default=False,
+)
+parser.add_argument(
+    '--out-dir', '-o',
+    help="Destination in which to save the builds relative to source dir",
+)
+
+
+def main(args):
+    pass
+
+
+
+if __name__ == '__main__':
+    main(parser.parse_args())
+''', id='pip._vendor.pep517.build minimal'
+        )
     ],
 )
 def test_examples(source):
