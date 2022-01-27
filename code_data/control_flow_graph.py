@@ -98,7 +98,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                 arg_value = args[block_index, instruction_index]
                 n_instructions = instruction.n_args_override or instrsize(arg_value)
                 current_instruction_offset += n_instructions
-                    
+
                 if isinstance(arg, Jump):
                     target_instruction_offset = block_index_to_instruction_offset[
                         arg.target
@@ -112,10 +112,12 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                         new_arg_value = multiplier * target_instruction_offset
                     # If we aren't overriding and the new size of instructions is not the same
                     # as the old, mark this as updated, so we re-calculate block positions!
-                    if not instruction.n_args_override and n_instructions != instrsize(new_arg_value):
+                    if not instruction.n_args_override and n_instructions != instrsize(
+                        new_arg_value
+                    ):
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
-    
+
     # Finally go assemble the bytes
     bytes_ = b""
     for block_index, block in cfg.items():

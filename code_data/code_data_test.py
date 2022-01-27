@@ -73,7 +73,8 @@ def f(x):
             % (("x = x or " + "-x" * 2500,) * 10),
             id="long jump",
         ),
-        pytest.param("""import json
+        pytest.param(
+            """import json
 
 def test_json():
     tmpdir = tempfile.mkdtemp()
@@ -111,7 +112,9 @@ def test_json():
 
 
     finally:
-        pass""", id="notebook.tests.test_config_manager minimal case")
+        pass""",
+            id="notebook.tests.test_config_manager minimal case",
+        ),
     ],
 )
 def test_examples(source):
@@ -128,14 +131,14 @@ def test_modules(subtests):
     # Keep a list of failures, so we can print the shortest at the end
     # list of (name, source) tuples
     failures: list[tuple[str, str]] = []
-    
+
     for name, source, code in module_codes():
         failures.append((name, source))
         with subtests.test(name):
             verify_code(code)
             # If we got here, then the verification succeeded, and we can remove from failures.
             failures.pop()
-    
+
     if failures:
         # sort failures by length of source
         name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
@@ -177,7 +180,7 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
             except SyntaxError:
                 continue
             if code:
-                source = loader.get_source(mi.name) #type: ignore
+                source = loader.get_source(mi.name)  # type: ignore
                 yield mi.name, source, code
 
 
