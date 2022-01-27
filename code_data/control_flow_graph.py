@@ -11,7 +11,7 @@ from __future__ import annotations
 import dis
 import sys
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 from .dataclass_hide_default import DataclassHideDefault
 from .instruction_data import InstructionData, instrsize, instructions_from_bytes
@@ -32,7 +32,7 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
         | {0}
     )
     block: list[Instruction] = []
-    blocks: ControlFlowGraph = []
+    blocks: list[list[Instruction]] = []
     for instruction_data in instructions:
         # If any of this instructions offsets are a jump target, start a new block
         # TODO: Just try first offset?
@@ -58,7 +58,7 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
         )
         block.append(instruction)
 
-    return blocks
+    return {i: block for i, block in enumerate(blocks)}
 
 
 def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
@@ -73,7 +73,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
 
         current_instruction_offset = 0
         # First go through and update all the instruction blocks
-        for block_index, block in enumerate(cfg):
+        for block_index, block in cfg.items():
             block_index_to_instruction_offset[block_index] = current_instruction_offset
             for instruction_index, instruction in enumerate(block):
                 if (block_index, instruction_index) in args:
@@ -92,7 +92,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
         # change the number of instructions needed for the arg, repeat
         changed_instruction_lengths = False
         current_instruction_offset = 0
-        for block_index, block in enumerate(cfg):
+        for block_index, block in cfg.items():
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
                 if isinstance(arg, Jump):
@@ -117,7 +117,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                 n_instructions = instruction.n_args_override or instrsize(arg_value)
                 current_instruction_offset += n_instructions
     bytes_ = b""
-    for block_index, block in enumerate(cfg):
+    for block_index, block in cfg.items():
         for instruction_index, instruction in enumerate(block):
             instruction_data = InstructionData(
                 None,  # type: ignore
@@ -140,7 +140,7 @@ def verify_cfg(cfg: ControlFlowGraph) -> None:
     Verify that the control flow graph is valid, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in cfg:
+    for block in cfg.values():
         assert block, "Block is empty"
         for instruction in block:
             arg = instruction.arg
@@ -185,7 +185,7 @@ class Jump:
 # 8. Generator kind
 
 Arg = Union[int, Jump]
-ControlFlowGraph = List[List[Instruction]]
+ControlFlowGraph = Dict[int, List[Instruction]]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069
