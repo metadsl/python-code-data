@@ -11,7 +11,7 @@ from __future__ import annotations
 import dis
 import sys
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Dict
+from typing import Dict, List, Optional, Union
 
 from .dataclass_hide_default import DataclassHideDefault
 from .instruction_data import InstructionData, instrsize, instructions_from_bytes
