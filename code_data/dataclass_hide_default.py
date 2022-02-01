@@ -1,37 +1,34 @@
-from copy import copy
-from dataclasses import _FIELDS, Field  # type: ignore
+from dataclasses import MISSING, fields
 
 
 class DataclassHideDefault:
     """
     Inherit from this class when creating a dataclass to not show any fields
-    in the repr which are set to their default.
+    in the repr which are set to their default, with Rich.
 
-    This lets us control the rich output for dataclasses, since it looks
-    at the `repr` of each field to know whether to display it.
+    Also, any fields with `positional` metadata set to `True` will
+    be shown as positional args.
 
-    TODO: Just implement rich repr to do this more obviously
+    Refer to Rich reference for protocol:
+
     https://rich.readthedocs.io/en/stable/pretty.html
     """
 
-    def __getattribute__(self, __name: str) -> object:
-        res = super().__getattribute__(__name)
-        # If we are getting the dataclass fields attribute
-        if __name == _FIELDS:
-            # Then return the same fields, however changing any field which
-            # is set to the default to not show in the repr
-            return {
-                name: _set_repr_false(field)
-                if field.default == getattr(self, name)
-                else field
-                for name, field in res.items()
-            }
-            # Transform fields
-        return res
-
-
-def _set_repr_false(field: Field) -> Field:
-    # Copy the field first, so that only this instance is mutated
-    new_field = copy(field)
-    new_field.repr = False
-    return new_field
+    def __rich_repr__(self):
+        for f in fields(self):
+            if not f.repr:
+                continue
+            if f.default_factory is not MISSING:
+                default = f.default_factory()
+            elif f.default is not MISSING:
+                default = f.default
+            else:
+                default = object()
+            name = f.name
+            value = getattr(self, f.name)
+            if value == default:
+                continue
+            if f.metadata.get("positional", False):
+                yield value
+            else:
+                yield name, value
