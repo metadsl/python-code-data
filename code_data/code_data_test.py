@@ -73,7 +73,8 @@ def f(x):
             % (("x = x or " + "-x" * 2500,) * 10),
             id="long jump",
         ),
-        pytest.param("""import json
+        pytest.param(
+            """import json
 
 def test_json():
     tmpdir = tempfile.mkdtemp()
@@ -111,7 +112,77 @@ def test_json():
 
 
     finally:
-        pass""", id="notebook.tests.test_config_manager minimal case")
+        pass""",
+            # Tests for a relative jump which has extended args
+            id="notebook.tests.test_config_manager minimal case",
+        ),
+        pytest.param(
+            '''"""Build a project using PEP 517 hooks.
+"""
+import argparse
+import io
+import logging
+import os
+import shutil
+
+from .envbuild import BuildEnvironment
+from .wrappers import Pep517HookCaller
+from .dirtools import tempdir, mkdir_p
+from .compat import FileNotFoundError, toml_load
+
+log = logging.getLogger(__name__)
+
+
+def validate_system():
+    pass
+
+
+def load_system():
+    pass
+
+
+def compat_system():
+    pass
+
+
+def _do_build():
+    pass
+
+
+def build(system=None):
+    pass
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    'source_dir',
+    help="A directory containing pyproject.toml",
+)
+parser.add_argument(
+    '--binary', '-b',
+    action='store_true',
+    default=False,
+)
+parser.add_argument(
+    '--source', '-s',
+    action='store_true',
+    default=False,
+)
+parser.add_argument(
+    '--out-dir', '-o',
+    help="Destination in which to save the builds relative to source dir",
+)
+
+
+def main(args):
+    pass
+
+
+
+if __name__ == '__main__':
+    main(parser.parse_args())
+''',
+            id="pip._vendor.pep517.build minimal",
+        ),
     ],
 )
 def test_examples(source):
@@ -128,14 +199,14 @@ def test_modules(subtests):
     # Keep a list of failures, so we can print the shortest at the end
     # list of (name, source) tuples
     failures: list[tuple[str, str]] = []
-    
+
     for name, source, code in module_codes():
         failures.append((name, source))
         with subtests.test(name):
             verify_code(code)
             # If we got here, then the verification succeeded, and we can remove from failures.
             failures.pop()
-    
+
     if failures:
         # sort failures by length of source
         name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
@@ -177,7 +248,7 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
             except SyntaxError:
                 continue
             if code:
-                source = loader.get_source(mi.name) #type: ignore
+                source = loader.get_source(mi.name)  # type: ignore
                 yield mi.name, source, code
 
 

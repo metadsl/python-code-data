@@ -76,7 +76,12 @@ class InstructionData(DataclassHideDefault):
         n_args = len(args)
         # The number of args should be at least the minimum
         assert n_args >= min_n_args
-        n_args_override = None if n_args == min_n_args else n_args
+        # Store the number of args if this is a jump instruction
+        # This is needed to preserve isomporphic behavior. Otherwise
+        # there are cases where jump instructions could be different values
+        # (and have different number of args), but point to the same instruction
+        # offset.
+        n_args_override = n_args if jump_target_offset is not None else None
 
         return cls(
             offset=offset,
