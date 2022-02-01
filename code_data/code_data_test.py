@@ -180,8 +180,9 @@ def main(args):
 
 if __name__ == '__main__':
     main(parser.parse_args())
-''', id='pip._vendor.pep517.build minimal'
-        )
+''',
+            id="pip._vendor.pep517.build minimal",
+        ),
     ],
 )
 def test_examples(source):
