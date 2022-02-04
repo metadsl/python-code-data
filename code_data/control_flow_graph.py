@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Union
 from .dataclass_hide_default import DataclassHideDefault
 from .instruction_data import InstructionData, instrsize, instructions_from_bytes
 
+ALL = set()
 
 def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
     instructions = list(instructions_from_bytes(b))
@@ -36,11 +37,9 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
     for instruction_data in instructions:
         # If any of this instructions offsets are a jump target, start a new block
         # TODO: Just try first offset?
-        for offset in instruction_data.offsets():
-            if offset in targets:
-                block = []
-                blocks.append(block)
-                break
+        if (instruction_data.offset - (instruction_data.n_args() * 2)) in targets:
+            block = []
+            blocks.append(block)
         # Create an instruction for this instruction data
         arg: Arg
         if instruction_data.jump_target_offset is None:

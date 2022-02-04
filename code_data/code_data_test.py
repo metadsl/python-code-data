@@ -12,6 +12,8 @@ import hypothesmith
 import pytest
 from hypothesis import HealthCheck, given, settings
 
+from code_data import control_flow_graph
+
 from .code_data import CodeData
 
 NEWLINE = "\n"
@@ -304,3 +306,10 @@ def code_to_dict(code: CodeType) -> dict[str, object]:
     Converts a code object to a dict for testing
     """
     return {name: getattr(code, name) for name in dir(code)}
+
+
+@pytest.fixture(scope="module", autouse=True)
+def after():
+    yield
+    print(control_flow_graph.ALL)
+
