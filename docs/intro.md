@@ -14,6 +14,14 @@ maintains the full semantics of the code object for Python 3.7-3.10.
 
 It is meant to be used by anyone trying to understand Python code to build some sort of compiler, for tools like Numba.
 
+## FAQ
+
+Q: How is this diferent from Python's built in [`dis` bytecode analysis](https://docs.python.org/3/library/dis.html#bytecode-analysis)?
+
+A: Like `dis`, `code_data` provides a way to understand Python's code objects at a higher level. They both map the bytes of the bytecode to instructions. `code_data`, however also provides a way to go back to the bytecode, from the high level description, unlike `dis`. This isomorphism makes it easy to test that the transformation to and from `code_data` preserves the original bytecode semantics, by verifying the resulting bytecode is equal to the initial.
+
+It's focus is also slightly different. While `dis` is meant to help aid in debugging bytecode, `code_data` is meant to be the first step in compiling Python or doing automated program analysis. Therefore, it is meant to abstract away from the details of how bytecode is persisted in memory. For example, you can't see the offset of each instruction in `code_data`, like you can with `dis`. So in this way, `code_data` actually provides *less* information, prefering to only preserve the high level semantics and not the underlying storage represenation. This is intentional, to make it simpler to understand what parts of the data are relevent. For example, with the `dis` module, to do block analysis, you might wonder if it's important at all to know the underlying bytecode offset of an instruction, because that information is included in the `dis.Instruction` instance. With `code_data`, it is not provided, so you know it's safe to ignore.
+
 ## Background
 
 The goal of this package is to present an alternative representation of Python
