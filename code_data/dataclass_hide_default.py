@@ -18,7 +18,7 @@ class DataclassHideDefault:
         for f in fields(self):
             if not f.repr:
                 continue
-            if f.default_factory is not MISSING:
+            if f.default_factory is not MISSING:  # type: ignore
                 default = f.default_factory()
             elif f.default is not MISSING:
                 default = f.default
