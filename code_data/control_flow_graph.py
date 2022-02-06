@@ -11,51 +11,79 @@ from __future__ import annotations
 import dis
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 from .dataclass_hide_default import DataclassHideDefault
-from .instruction_data import InstructionData, instrsize, instructions_from_bytes
 
 
+# TODO: Rename blocks
 def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
-    instructions = list(instructions_from_bytes(b))
+    """
+    Parse a sequence of bytes as a sequence of blocks of instructions.
+    """
+    # First, iterate through bytes to make instructions while also making set of all the targets
+    # List of bytecode offsets and instructions
+    offsets_and_instruction: list[tuple[int, Instruction]] = []
+    # Set of all instruction offsets which are targets of jump blocks
+    # The targets always includes the first block
+    targets_set = {0}
 
-    # First compute a sorted list of all bytecode offsets which are jump targets
-    # plus the initial offset of 0
-    # This is to know which block each offset belongs to
-    targets = sorted(
-        set(
-            i.jump_target_offset
-            for i in instructions
-            if i.jump_target_offset is not None
+    for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
+
+        is_abs_jump = opcode in dis.hasjabs
+        is_rel_jump = opcode in dis.hasjrel
+        
+        processed_arg: Arg
+        # Compute the jump targets, initially with just the byte offset
+        # Once we know all the block targets, we will transform to be block offsets
+        if is_abs_jump or is_rel_jump:
+            if is_abs_jump:
+                abs_jump_target = (2 if _ATLEAST_310 else 1) * arg
+
+            else:
+                abs_jump_target = next_offset + ((2 if _ATLEAST_310 else 1) * arg)
+            
+            targets_set.add(abs_jump_target)
+            processed_arg = Jump(
+                target =  abs_jump_target,
+                relative=not is_abs_jump
+            )
+            # Store the number of args if this is a jump instruction
+            # This is needed to preserve isomporphic behavior. Otherwise
+            # there are cases where jump instructions could be different values
+            # (and have different number of args), but point to the same instruction
+            # offset.
+            n_args_override = n_args
+        else:
+            processed_arg = arg
+            n_args_override = None
+
+
+        instruction = Instruction(
+            name=dis.opname[opcode],
+            arg=processed_arg,
+            n_args_override=n_args_override,
         )
-        | {0}
-    )
-    block: list[Instruction] = []
+        offsets_and_instruction.append((offset, instruction))
+
+
+    # Compute a sorted list of target, to map each one to a bloc offset
+    targets = sorted(targets_set)
+    del targets_set
+
+    # Then, iterate through each instruction to update the jump to point to the
+    # block offset, instead of the bytecode offset
+    block: list[Instruction] 
     blocks: list[list[Instruction]] = []
-    for instruction_data in instructions:
-        # If the first instruction offset is one of the targets, start a new block
-        # (instructions are always jumped to at the first offset, not halfway through)
-        n_args = instruction_data.n_args_override or instrsize(instruction_data.arg)
-        offset = instruction_data.offset - ((n_args - 1) * 2)
+    for offset, instruction in offsets_and_instruction:
+        # If the instruction offset is one of the targets, start a new block
         if offset in targets:
             block = []
             blocks.append(block)
-        # Create an instruction for this instruction data
-        arg: Arg
-        if instruction_data.jump_target_offset is None:
-            arg = instruction_data.arg
-        else:
-            arg = Jump(
-                targets.index(instruction_data.jump_target_offset),
-                relative=dis.opmap[instruction_data.name] in dis.hasjrel,
-            )
-
-        instruction = Instruction(
-            instruction_data.name,
-            arg,
-            instruction_data.n_args_override,
-        )
+        # If the instruction is a jump instruction, update it's arg with the
+        # block offset, instead of instruction offset
+        if isinstance(instruction.arg, Jump):
+            instruction.arg.target = targets.index(instruction.arg.target)
         block.append(instruction)
 
     return {i: block for i, block in enumerate(blocks)}
@@ -136,7 +164,6 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
     return bytes(bytes_)
 
 
-
 def verify_cfg(cfg: ControlFlowGraph) -> None:
     """
     Verify that the control flow graph is valid, by making sure every
@@ -192,3 +219,38 @@ ControlFlowGraph = Dict[int, List[Instruction]]
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069
 _ATLEAST_310 = sys.version_info >= (3, 10)
+
+
+def _parse_bytes(b: bytes) -> Iterable[tuple[int, int, int, int, int]]:
+    """
+    Parses a sequence of bytes as instructions.
+    For each it return returns a tuple of:
+        1. The instruction opcode
+        2. the instruction argument
+        3. The number of args this instruction used
+        4. The first offset of this instruction
+        5. The first offset after this instruction
+    """
+    n_args: int = 0
+    arg: int = 0
+    for i in range(0, len(b), 2):
+        opcode = b[i]
+        arg |= b[i + 1]
+        n_args += 1
+        if opcode == dis.EXTENDED_ARG:
+            arg = (arg << 8)
+        else:
+            first_offset = i - ((n_args - 1) * 2)
+            next_offset = i + 2
+            yield (opcode, arg, n_args, first_offset, next_offset)
+            n_args = 0
+            arg = 0
+
+def instrsize(arg: int) -> int:
+    """
+    Minimum number of code units necessary to encode instruction with
+    EXTENDED_ARGs
+
+    From https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L11-L20
+    """
+    return 1 if arg <= 0xFF else 2 if arg <= 0xFFFF else 3 if arg <= 0xFFFFFF else 4
