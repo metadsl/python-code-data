@@ -1,18 +1,23 @@
 default_language_version:
-    python: python3.10
+  python: python3.10
 repos:
-- repo: https://github.com/executablebooks/jupyter-book
-  rev: v0.12.1
-  hooks:
-  - id: jb-to-sphinx
-    args: ["docs"]
-- repo: https://github.com/pycqa/isort
-  rev: 5.10.1
-  hooks:
-    - id: isort
-      name: isort (python)
--   repo: https://github.com/psf/black
+  - repo: https://github.com/executablebooks/jupyter-book
+    rev: v0.12.1
+    hooks:
+      - id: jb-to-sphinx
+        args: ["docs"]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        name: isort (python)
+  - repo: https://github.com/psf/black
     rev: 21.12b0
     hooks:
-    -   id: black
+      - id: black
         exclude: ^docs/conf\.py
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.931
+    hooks:
+      - id: mypy
+        exclude: "docs/conf.py"

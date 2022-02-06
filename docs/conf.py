@@ -3,7 +3,7 @@
 # If you wish to continue using _config.yml, make edits to that file and
 # re-generate this one.
 ###############################################################################
-author = 'The metadsl Community'
+author = 'metadsl'
 autoapi_dirs = ['../code_data']
 autoapi_ignore = ['*_test.py']
 autoapi_type = 'python'
