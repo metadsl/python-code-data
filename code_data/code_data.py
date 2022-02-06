@@ -118,7 +118,7 @@ class CodeData(DataclassHideDefault):
 
     def to_code(self) -> CodeType:
         consts = tuple(map(from_code_constant, self.consts))
-        flags = from_flags_data(self.flags_data)
+        flags = from_flags_data(self.flags)
         # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
         if sys.version_info >= (3, 8):
             return CodeType(
