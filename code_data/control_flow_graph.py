@@ -155,25 +155,25 @@ def verify_cfg(cfg: ControlFlowGraph) -> None:
 class Instruction(DataclassHideDefault):
 
     # The name of the instruction
-    name: str
+    name: str = field(metadata={"positional": True})
 
     # The integer value of the arg
-    arg: Arg
+    arg: Arg = field(metadata={"positional": True})
 
     # The number of args, if it differs form the instrsize
     # Note: in Python >= 3.10 we can calculute this from the instruction size,
     # using `instrsize`, but in python < 3.10, sometimes instructions are prefixed
     # with extended args with value 0 (not sure why or how), so we need to save
     # the value manually to recreate the instructions
-    n_args_override: Optional[int] = field(repr=False, default=1)
+    n_args_override: Optional[int] = field(repr=False)
 
     # TODO: Add value for compilation out
 
 
 @dataclass
-class Jump:
+class Jump(DataclassHideDefault):
     # The block index of the target
-    target: int
+    target: int = field(metadata={"positional": True})
     # Whether the jump is absolute or relative
     relative: bool = field(repr=False)
 
