@@ -36,7 +36,8 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
     for instruction_data in instructions:
         # If the first instruction offset is one of the targets, start a new block
         # (instructions are always jumped to at the first offset, not halfway through)
-        offset = instruction_data.offset - ((instruction_data.n_args() - 1) * 2)
+        n_args = instruction_data.n_args_override or instrsize(instruction_data.arg)
+        offset = instruction_data.offset - ((n_args - 1) * 2)
         if offset in targets:
             block = []
             blocks.append(block)
@@ -47,7 +48,7 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
         else:
             arg = Jump(
                 targets.index(instruction_data.jump_target_offset),
-                relative=instruction_data.opcode() in dis.hasjrel,
+                relative=dis.opmap[instruction_data.name] in dis.hasjrel,
             )
 
         instruction = Instruction(
@@ -118,23 +119,22 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                     args[block_index, instruction_index] = new_arg_value
 
     # Finally go assemble the bytes
-    bytes_ = b""
+    bytes_: list[int] = []
     for block_index, block in cfg.items():
         for instruction_index, instruction in enumerate(block):
-            instruction_data = InstructionData(
-                None,  # type: ignore
-                instruction.name,
-                args[block_index, instruction_index],
-                instruction.n_args_override,
-            )
-            bytes_ += bytes(instruction_data.bytes())
-    return bytes_
+            arg_value = args[block_index, instruction_index]
+            n_args = instruction.n_args_override or instrsize(arg_value)
+            # Duplicate semantics of write_op_arg
+            # to produce the the right number of extended arguments
+            # https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L22-L44
+            for i in reversed(range(n_args)):
+                bytes_.append(
+                    dis.opmap[instruction.name] if i == 0 else dis.EXTENDED_ARG
+                )
+                bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
+    return bytes(bytes_)
 
-# How does python compute the byte offsets when jumping if the number of bytes
-# in the jump can influence the offset?
-# Where does it do this?
-# Does it keep looping until its stable?
 
 
 def verify_cfg(cfg: ControlFlowGraph) -> None:

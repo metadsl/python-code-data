@@ -91,22 +91,6 @@ class InstructionData(DataclassHideDefault):
             n_args_override=n_args_override,
         )
 
-    def bytes(self) -> Iterable[int]:
-        # Duplicate semantics of write_op_arg
-        # to produce the the right number of extended arguments
-        # https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L22-L44
-        for i in reversed(range(self.n_args())):
-            yield self.opcode() if i == 0 else dis.EXTENDED_ARG
-            yield (self.arg >> (8 * i)) & 0xFF
-
-    def n_args(self) -> int:
-        if self.n_args_override is not None:
-            return self.n_args_override
-        return instrsize(self.arg)
-
-    def opcode(self) -> int:
-        return dis.opmap[self.name]
-
 
 def instrsize(arg: int) -> int:
     """
