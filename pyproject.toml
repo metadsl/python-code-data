@@ -50,3 +50,6 @@ extend-exclude = 'docs/conf\.py'
 [tool.isort]
 profile = "black"
 skip_gitignore = true
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules"
