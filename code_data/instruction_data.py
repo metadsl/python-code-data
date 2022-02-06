@@ -107,14 +107,6 @@ class InstructionData(DataclassHideDefault):
     def opcode(self) -> int:
         return dis.opmap[self.name]
 
-    def offsets(self) -> Iterable[int]:
-        """
-        Returns all the offsets for the instruction, including those for the extended
-        args that appear before it
-        """
-        for i in range(self.n_args()):
-            yield self.offset - (i * 2)
-
 
 def instrsize(arg: int) -> int:
     """

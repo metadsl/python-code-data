@@ -34,13 +34,12 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
     block: list[Instruction] = []
     blocks: list[list[Instruction]] = []
     for instruction_data in instructions:
-        # If any of this instructions offsets are a jump target, start a new block
-        # TODO: Just try first offset?
-        for offset in instruction_data.offsets():
-            if offset in targets:
-                block = []
-                blocks.append(block)
-                break
+        # If the first instruction offset is one of the targets, start a new block
+        # (instructions are always jumped to at the first offset, not halfway through)
+        offset = instruction_data.offset - ((instruction_data.n_args() - 1) * 2)
+        if offset in targets:
+            block = []
+            blocks.append(block)
         # Create an instruction for this instruction data
         arg: Arg
         if instruction_data.jump_target_offset is None:
