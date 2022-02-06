@@ -15,7 +15,6 @@ kernelspec:
 
 # Usage
 
-
 ## Python API
 
 The overall workflow for using the API involves some part of these steps:
@@ -78,7 +77,7 @@ new_code_data = replace(
       replace(
         instruction,
         name='BINARY_SUBTRACT' if instruction.name == "BINARY_ADD" else instruction.name
-      ) 
+      )
       for instruction in block
     ]
     for block in code_data.cfg
@@ -100,7 +99,6 @@ For our next example, lets do something a bit more fun. Let's load all installed
 sort the flags by what "level" they were defined at. For example, a module is
 at the top level, a class second level, etc.
 
-
 First we can load all the code objects for all importable modules, using
 a util written for the tests. In the tests, we use this to verify that
 our code analysis is isomporphic, meaning that when we convert to and from the
@@ -117,7 +115,7 @@ Lets turn them all into code data:
 
 ```{code-cell}
 all_code_data = [code_to_data(code) for _, code in names_and_codes]
-all_code_data[0].flags_data
+all_code_data[0].flags
 ```
 
 We can see that the flags are a list of strings.
@@ -133,7 +131,7 @@ flags_per_level = defaultdict(Counter)
 counts_per_level = defaultdict(lambda: 0)
 
 def process_code_data(code_data: CodeData, level: int) -> None:
-    flags_per_level[level].update(code_data.flags_data)
+    flags_per_level[level].update(code_data.flags)
     counts_per_level[level] += 1
     for c in code_data.consts:
         if isinstance(c, CodeData):

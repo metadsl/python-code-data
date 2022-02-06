@@ -28,6 +28,9 @@ class CodeData(DataclassHideDefault):
     From https://docs.python.org/3/library/inspect.html
     """
 
+    # Bytecode instructions
+    cfg: ControlFlowGraph = field(metadata={"positional": True})
+
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
 
@@ -44,10 +47,7 @@ class CodeData(DataclassHideDefault):
     stacksize: int = field(default=1)
 
     # code flags
-    flags_data: FlagsData = field(default_factory=set)
-
-    # Bytecode instructions
-    cfg: ControlFlowGraph = field(default_factory=ControlFlowGraph)
+    flags: FlagsData = field(default_factory=set)
 
     # tuple of constants used in the bytecode
     # All code objects are recursively transformed to CodeData objects
@@ -76,10 +76,6 @@ class CodeData(DataclassHideDefault):
     cellvars: Tuple[str, ...] = field(default=tuple())
 
     @property
-    def flags(self) -> int:
-        return from_flags_data(self.flags_data)
-
-    @property
     def code(self) -> bytes:
         return cfg_to_bytes(self.cfg)
 
@@ -87,7 +83,7 @@ class CodeData(DataclassHideDefault):
     def line_table_bytes(self) -> bytes:
         return from_line_table(self.line_table)
 
-    def verify(self) -> None:
+    def _verify(self) -> None:
         verify_cfg(self.cfg)
 
     @classmethod
@@ -102,13 +98,13 @@ class CodeData(DataclassHideDefault):
         else:
             line_table = to_line_table(code.co_lnotab)
         return cls(
+            bytes_to_cfg(code.co_code),
             code.co_argcount,
             posonlyargcount,
             code.co_kwonlyargcount,
             code.co_nlocals,
             code.co_stacksize,
             to_flags_data(code.co_flags),
-            bytes_to_cfg(code.co_code),
             tuple(map(to_code_constant, code.co_consts)),
             code.co_names,
             code.co_varnames,
@@ -122,6 +118,7 @@ class CodeData(DataclassHideDefault):
 
     def to_code(self) -> CodeType:
         consts = tuple(map(from_code_constant, self.consts))
+        flags = from_flags_data(self.flags)
         # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
         if sys.version_info >= (3, 8):
             return CodeType(
@@ -131,7 +128,7 @@ class CodeData(DataclassHideDefault):
                 self.kwonlyargcount,
                 self.nlocals,
                 self.stacksize,
-                self.flags,
+                flags,
                 self.code,
                 consts,
                 self.names,
@@ -149,7 +146,7 @@ class CodeData(DataclassHideDefault):
                 self.kwonlyargcount,
                 self.nlocals,
                 self.stacksize,
-                self.flags,
+                flags,
                 self.code,
                 consts,
                 self.names,

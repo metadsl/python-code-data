@@ -254,7 +254,7 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
 
 def verify_code(code: CodeType) -> None:
     code_data = CodeData.from_code(code)
-    code_data.verify()
+    code_data._verify()
     resulting_code = code_data.to_code()
 
     # First compare as primitives, for better diffing if they aren't equal
