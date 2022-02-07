@@ -20,10 +20,33 @@ kernelspec:
 The overall workflow for using the API involves some part of these steps:
 
 1. Get your hands on a [Code object](https://docs.python.org/3/reference/datamodel.html#index-55), like by using `compile`
-2. Turn it into data using [`code_to_data`](code_data.code_to_data).
+2. Turn it into data using .
 3. Modify it, traverse it, or use it for downstream analysis.
-4. Turn the `CodeData` back into a real Python code object.
+4. Turn the [`CodeData`](code_data.code_data.CodeData) back into a real Python code object.
 5. Execute the code object, using `exec`.
+
+
+```{eval-rst}
+.. autofunction:: code_data.code_to_data
+.. autoclass:: code_data.code_data.CodeData
+```
+
+
+Inside the blocks of the `CodeData`, is a list of `Instructions`:
+
+```{eval-rst}
+.. autoclass:: code_data.blocks.Instruction
+.. autoclass:: code_data.blocks.Jump
+```
+
+The line table is currently stored in either the old or new format, changed in Python 3.10:
+
+
+```{eval-rst}
+.. autoclass:: code_data.line_table.NewLineTable
+.. autoclass:: code_data.line_table.OldLineTable
+.. autoclass:: code_data.line_table.LineTableItem
+```
 
 ### Example: Modifying Existing Bytecode
 
@@ -32,7 +55,6 @@ In this example, we will compile some code, modify the bytecode, and then turn i
 We can make a code object from a string using `compile`:
 
 ```{code-cell}
-%load_ext rich
 x = True
 source_code = "print(10 + (100 if x else 10))"
 code = compile(source_code, "", "exec")
@@ -62,34 +84,34 @@ code_data = code_to_data(code)
 code_data
 ```
 
+This is still a bit hard to see, so let's install Rich's pretty print helper:
+
+```{code-cell}
+from rich import pretty
+pretty.install()
+code_data
+```
+
+That's better!
+
 We can see now that we have two blocks, each with a list of instructions.
 
-Let's try to change the additions to subtractions! We can either modify the code data in place,
-or we can use `dataclasses.replace` to create a new code data:
+Let's try to change the additions to subtractions!
 
 ```{code-cell}
 from dataclasses import replace
 
-new_code_data = replace(
-  code_data,
-  blocks=[
-    [
-      replace(
-        instruction,
-        name='BINARY_SUBTRACT' if instruction.name == "BINARY_ADD" else instruction.name
-      )
-      for instruction in block
-    ]
-    for block in code_data.blocks
-  ]
-)
-new_code_data
+for block in code_data.blocks.values():
+    for instruction in block:
+        if instruction.name == "BINARY_ADD":
+            instruction.name = "BINARY_SUBTRACT"
+code_data
 ```
 
 Now we can turn this back into code and exec it!
 
 ```{code-cell}
-new_code = new_code_data.to_code()
+new_code = code_data.to_code()
 exec(new_code)
 ```
 
@@ -107,14 +129,14 @@ code data, we should get back an equivalent code object.
 ```{code-cell}
 from code_data.code_data_test import module_codes
 
-names_and_codes = list(module_codes())
-names_and_codes[:3]
+names_source_and_codes = list(module_codes())
+names_source_and_codes[:3]
 ```
 
 Lets turn them all into code data:
 
 ```{code-cell}
-all_code_data = [code_to_data(code) for _, code in names_and_codes]
+all_code_data = [code_to_data(code) for (name, source, code) in names_source_and_codes]
 all_code_data[0].flags
 ```
 
