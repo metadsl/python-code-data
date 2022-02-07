@@ -32,7 +32,7 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
 
         is_abs_jump = opcode in dis.hasjabs
         is_rel_jump = opcode in dis.hasjrel
-        
+
         processed_arg: Arg
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
@@ -42,12 +42,9 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
 
             else:
                 abs_jump_target = next_offset + ((2 if _ATLEAST_310 else 1) * arg)
-            
+
             targets_set.add(abs_jump_target)
-            processed_arg = Jump(
-                target =  abs_jump_target,
-                relative=not is_abs_jump
-            )
+            processed_arg = Jump(target=abs_jump_target, relative=not is_abs_jump)
             # Store the number of args if this is a jump instruction
             # This is needed to preserve isomporphic behavior. Otherwise
             # there are cases where jump instructions could be different values
@@ -58,7 +55,6 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
             processed_arg = arg
             n_args_override = None
 
-
         instruction = Instruction(
             name=dis.opname[opcode],
             arg=processed_arg,
@@ -66,14 +62,13 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
         )
         offsets_and_instruction.append((offset, instruction))
 
-
     # Compute a sorted list of target, to map each one to a bloc offset
     targets = sorted(targets_set)
     del targets_set
 
     # Then, iterate through each instruction to update the jump to point to the
     # block offset, instead of the bytecode offset
-    block: list[Instruction] 
+    block: list[Instruction]
     blocks: list[list[Instruction]] = []
     for offset, instruction in offsets_and_instruction:
         # If the instruction offset is one of the targets, start a new block
@@ -194,7 +189,6 @@ class Instruction(DataclassHideDefault):
     n_args_override: Optional[int] = field(repr=False)
 
 
-
 @dataclass
 class Jump(DataclassHideDefault):
     # The block index of the target
@@ -237,13 +231,14 @@ def _parse_bytes(b: bytes) -> Iterable[tuple[int, int, int, int, int]]:
         arg |= b[i + 1]
         n_args += 1
         if opcode == dis.EXTENDED_ARG:
-            arg = (arg << 8)
+            arg = arg << 8
         else:
             first_offset = i - ((n_args - 1) * 2)
             next_offset = i + 2
             yield (opcode, arg, n_args, first_offset, next_offset)
             n_args = 0
             arg = 0
+
 
 def instrsize(arg: int) -> int:
     """
