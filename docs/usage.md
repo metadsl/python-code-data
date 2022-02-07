@@ -72,7 +72,7 @@ from dataclasses import replace
 
 new_code_data = replace(
   code_data,
-  cfg=[
+  blocks=[
     [
       replace(
         instruction,
@@ -80,7 +80,7 @@ new_code_data = replace(
       )
       for instruction in block
     ]
-    for block in code_data.cfg
+    for block in code_data.blocks
   ]
 )
 new_code_data

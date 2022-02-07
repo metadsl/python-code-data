@@ -81,7 +81,7 @@ def bytes_to_blocks(b: bytes) -> Blocks:
     return {i: block for i, block in enumerate(blocks)}
 
 
-def blocks_to_bytes(cfg: Blocks) -> bytes:
+def blocks_to_bytes(blocks: Blocks) -> bytes:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -93,7 +93,7 @@ def blocks_to_bytes(cfg: Blocks) -> bytes:
 
         current_instruction_offset = 0
         # First go through and update all the instruction blocks
-        for block_index, block in cfg.items():
+        for block_index, block in blocks.items():
             block_index_to_instruction_offset[block_index] = current_instruction_offset
             for instruction_index, instruction in enumerate(block):
                 if (block_index, instruction_index) in args:
@@ -112,7 +112,7 @@ def blocks_to_bytes(cfg: Blocks) -> bytes:
         # change the number of instructions needed for the arg, repeat
         changed_instruction_lengths = False
         current_instruction_offset = 0
-        for block_index, block in cfg.items():
+        for block_index, block in blocks.items():
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
                 arg_value = args[block_index, instruction_index]
@@ -140,7 +140,7 @@ def blocks_to_bytes(cfg: Blocks) -> bytes:
 
     # Finally go assemble the bytes
     bytes_: list[int] = []
-    for block_index, block in cfg.items():
+    for block_index, block in blocks.items():
         for instruction_index, instruction in enumerate(block):
             arg_value = args[block_index, instruction_index]
             n_args = instruction.n_args_override or _instrsize(arg_value)
@@ -156,17 +156,17 @@ def blocks_to_bytes(cfg: Blocks) -> bytes:
     return bytes(bytes_)
 
 
-def verify_block(cfg: Blocks) -> None:
+def verify_block(blocks: Blocks) -> None:
     """
     Verify that the blocks are valid, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in cfg.values():
+    for block in blocks.values():
         assert block, "Block is empty"
         for instruction in block:
             arg = instruction.arg
             if isinstance(arg, Jump):
-                assert arg.target in range(len(cfg)), "Jump target is out of range"
+                assert arg.target in range(len(blocks)), "Jump target is out of range"
 
 
 @dataclass
