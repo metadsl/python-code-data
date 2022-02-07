@@ -193,7 +193,6 @@ class Instruction(DataclassHideDefault):
     # the value manually to recreate the instructions
     n_args_override: Optional[int] = field(repr=False)
 
-    # TODO: Add value for compilation out
 
 
 @dataclass
