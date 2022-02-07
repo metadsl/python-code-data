@@ -132,8 +132,9 @@ def blocks_to_bytes(blocks: Blocks) -> bytes:
                         new_arg_value = multiplier * target_instruction_offset
                     # If we aren't overriding and the new size of instructions is not the same
                     # as the old, mark this as updated, so we re-calculate block positions!
-                    if not instruction.n_args_override and n_instructions != _instrsize(
-                        new_arg_value
+                    if (
+                        not instruction.n_args_override
+                        and n_instructions != _instrsize(new_arg_value)
                     ):
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
