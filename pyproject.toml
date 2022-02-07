@@ -37,7 +37,7 @@ test = [
 
 docs = [
     "jupyter-book",
-    "sphinx-autoapi",
+#    "sphinx-autoapi",
     "sphinx-autodoc-typehints"
 ]
 

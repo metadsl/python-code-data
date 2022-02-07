@@ -5,11 +5,6 @@
 ###############################################################################
 always_document_param_types = True
 author = 'metadsl'
-autoapi_dirs = ['../code_data']
-autoapi_ignore = ['*_test.py']
-autoapi_keep_files = True
-autoapi_type = 'python'
-autodoc_typehints = 'description'
 comments_config = {'hypothesis': False, 'utterances': False}
 copyright = '2021'
 exclude_patterns = ['**.ipynb_checkpoints', '.DS_Store', 'Thumbs.db', '_build']
@@ -17,7 +12,7 @@ execution_allow_errors = False
 execution_excludepatterns = []
 execution_in_temp = False
 execution_timeout = 30
-extensions = ['sphinx_togglebutton', 'sphinx_copybutton', 'myst_nb', 'jupyter_book', 'sphinx_thebe', 'sphinx_comments', 'sphinx_external_toc', 'sphinx.ext.intersphinx', 'sphinx_panels', 'sphinx_book_theme', 'autoapi.extension', 'sphinx_autodoc_typehints', 'sphinx_jupyterbook_latex']
+extensions = ['sphinx_togglebutton', 'sphinx_copybutton', 'myst_nb', 'jupyter_book', 'sphinx_thebe', 'sphinx_comments', 'sphinx_external_toc', 'sphinx.ext.intersphinx', 'sphinx_panels', 'sphinx_book_theme', 'sphinx.ext.autodoc', 'sphinx_autodoc_typehints', 'sphinx_jupyterbook_latex']
 external_toc_exclude_missing = False
 external_toc_path = '_toc.yml'
 html_baseurl = ''
