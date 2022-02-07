@@ -1,9 +1,7 @@
 """
-Decodes the linear list of instructions into a control flow graph.
+Decodes the linear list of instructions into a sequence of blocks.
 
-This representation is a list blocks, where each block is a list of instructions.
-
-Every instruction that is jumped to starts a new control flow block.
+Every instruction that is jumped to starts a new block.
 """
 
 from __future__ import annotations
@@ -16,8 +14,7 @@ from typing import Dict, Iterable, List, Optional, Union
 from .dataclass_hide_default import DataclassHideDefault
 
 
-# TODO: Rename blocks
-def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
+def bytes_to_blocks(b: bytes) -> Blocks:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -84,7 +81,7 @@ def bytes_to_cfg(b: bytes) -> ControlFlowGraph:
     return {i: block for i, block in enumerate(blocks)}
 
 
-def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
+def blocks_to_bytes(cfg: Blocks) -> bytes:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -109,7 +106,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                     else:
                         arg_value = arg
                     args[block_index, instruction_index] = arg_value
-                n_instructions = instruction.n_args_override or instrsize(arg_value)
+                n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
         # Then go and update all the jump instructions. If any of them
         # change the number of instructions needed for the arg, repeat
@@ -119,7 +116,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
                 arg_value = args[block_index, instruction_index]
-                n_instructions = instruction.n_args_override or instrsize(arg_value)
+                n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
 
                 if isinstance(arg, Jump):
@@ -135,7 +132,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
                         new_arg_value = multiplier * target_instruction_offset
                     # If we aren't overriding and the new size of instructions is not the same
                     # as the old, mark this as updated, so we re-calculate block positions!
-                    if not instruction.n_args_override and n_instructions != instrsize(
+                    if not instruction.n_args_override and n_instructions != _instrsize(
                         new_arg_value
                     ):
                         changed_instruction_lengths = True
@@ -146,7 +143,7 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
     for block_index, block in cfg.items():
         for instruction_index, instruction in enumerate(block):
             arg_value = args[block_index, instruction_index]
-            n_args = instruction.n_args_override or instrsize(arg_value)
+            n_args = instruction.n_args_override or _instrsize(arg_value)
             # Duplicate semantics of write_op_arg
             # to produce the the right number of extended arguments
             # https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L22-L44
@@ -159,9 +156,9 @@ def cfg_to_bytes(cfg: ControlFlowGraph) -> bytes:
     return bytes(bytes_)
 
 
-def verify_cfg(cfg: ControlFlowGraph) -> None:
+def verify_block(cfg: Blocks) -> None:
     """
-    Verify that the control flow graph is valid, by making sure every
+    Verify that the blocks are valid, by making sure every
     instruction that jumps can find it's block.
     """
     for block in cfg.values():
@@ -207,7 +204,8 @@ class Jump(DataclassHideDefault):
 # 8. Generator kind
 
 Arg = Union[int, Jump]
-ControlFlowGraph = Dict[int, List[Instruction]]
+# dict mapping block offset to list of instructions in the block
+Blocks = Dict[int, List[Instruction]]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069
@@ -240,7 +238,7 @@ def _parse_bytes(b: bytes) -> Iterable[tuple[int, int, int, int, int]]:
             arg = 0
 
 
-def instrsize(arg: int) -> int:
+def _instrsize(arg: int) -> int:
     """
     Minimum number of code units necessary to encode instruction with
     EXTENDED_ARGs
