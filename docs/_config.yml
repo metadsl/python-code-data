@@ -6,7 +6,7 @@ author: metadsl
 
 # See https://jupyterbook.org/content/execute.html
 execute:
-  execute_notebooks: auto
+  execute_notebooks: off
   allow_errors: False
 
 # Information about where the book exists on the web
@@ -25,7 +25,8 @@ sphinx:
   extra_extensions:
     # - autoapi.extension
     - 'sphinx.ext.autodoc'
-    - sphinx_autodoc_typehints
+    - 'sphinx.ext.intersphinx'
+    # - sphinx_autodoc_typehints
   config:
     # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
     # autoapi_type: python
@@ -33,8 +34,12 @@ sphinx:
     # autoapi_ignore: ["*_test.py"]
     # autoapi_keep_files: true
     # https://sphinx-autoapi.readthedocs.io/en/latest/how_to.html#how-to-include-type-annotations-as-types-in-rendered-docstrings
-    # autodoc_typehints: description
+    autodoc_typehints: description
     # https://github.com/tox-dev/sphinx-autodoc-typehints#options
-    always_document_param_types: true
-    typehints_defaults: comma
+    # always_document_param_types: true
+    # typehints_defaults: comma
     
+    intersphinx_mapping:
+      python:
+        - https://docs.python.org/3
+        - 
