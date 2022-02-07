@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from types import CodeType
 from typing import Tuple
 
-from .control_flow_graph import ControlFlowGraph, bytes_to_cfg, cfg_to_bytes, verify_cfg
+from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
 from .line_table import LineTable, from_line_table, to_line_table
@@ -29,7 +29,7 @@ class CodeData(DataclassHideDefault):
     """
 
     # Bytecode instructions
-    cfg: ControlFlowGraph = field(metadata={"positional": True})
+    blocks: Blocks = field(metadata={"positional": True})
 
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
@@ -77,14 +77,14 @@ class CodeData(DataclassHideDefault):
 
     @property
     def code(self) -> bytes:
-        return cfg_to_bytes(self.cfg)
+        return blocks_to_bytes(self.blocks)
 
     @property
     def line_table_bytes(self) -> bytes:
         return from_line_table(self.line_table)
 
     def _verify(self) -> None:
-        verify_cfg(self.cfg)
+        verify_block(self.blocks)
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
@@ -98,7 +98,7 @@ class CodeData(DataclassHideDefault):
         else:
             line_table = to_line_table(code.co_lnotab)
         return cls(
-            bytes_to_cfg(code.co_code),
+            bytes_to_blocks(code.co_code),
             code.co_argcount,
             posonlyargcount,
             code.co_kwonlyargcount,
