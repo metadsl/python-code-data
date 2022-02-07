@@ -1,6 +1,5 @@
 """
 Decodes the linear list of instructions into a sequence of blocks.
-
 Every instruction that is jumped to starts a new block.
 """
 
