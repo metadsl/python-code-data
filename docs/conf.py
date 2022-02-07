@@ -3,11 +3,9 @@
 # If you wish to continue using _config.yml, make edits to that file and
 # re-generate this one.
 ###############################################################################
-always_document_param_types = True
 author = 'metadsl'
 autoapi_dirs = ['../code_data']
 autoapi_ignore = ['*_test.py']
-autoapi_keep_files = True
 autoapi_type = 'python'
 autodoc_typehints = 'description'
 comments_config = {'hypothesis': False, 'utterances': False}
@@ -38,6 +36,5 @@ numfig = True
 panels_add_bootstrap_css = False
 pygments_style = 'sphinx'
 suppress_warnings = ['myst.domains']
-typehints_defaults = 'comma'
 use_jupyterbook_latex = True
 use_multitoc_numbering = True
