@@ -6,7 +6,8 @@ author: metadsl
 
 # See https://jupyterbook.org/content/execute.html
 execute:
-  execute_notebooks: force
+  execute_notebooks: auto
+  allow_errors: False
 
 # Information about where the book exists on the web
 repository:

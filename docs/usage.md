@@ -32,7 +32,6 @@ In this example, we will compile some code, modify the bytecode, and then turn i
 We can make a code object from a string using `compile`:
 
 ```{code-cell}
-%load_ext rich
 x = True
 source_code = "print(10 + (100 if x else 10))"
 code = compile(source_code, "", "exec")
@@ -61,6 +60,16 @@ from code_data import code_to_data
 code_data = code_to_data(code)
 code_data
 ```
+
+This is still a bit hard to see, so let's install Rich's pretty print helper:
+
+```{code-cell}
+from rich import pretty
+pretty.install()
+code_data
+```
+
+That's better!
 
 We can see now that we have two blocks, each with a list of instructions.
 

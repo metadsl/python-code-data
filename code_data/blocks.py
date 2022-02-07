@@ -215,12 +215,14 @@ _ATLEAST_310 = sys.version_info >= (3, 10)
 def _parse_bytes(b: bytes) -> Iterable[tuple[int, int, int, int, int]]:
     """
     Parses a sequence of bytes as instructions.
+
     For each it return returns a tuple of:
-        1. The instruction opcode
-        2. the instruction argument
-        3. The number of args this instruction used
-        4. The first offset of this instruction
-        5. The first offset after this instruction
+
+    1. The instruction opcode
+    2. the instruction argument
+    3. The number of args this instruction used
+    4. The first offset of this instruction
+    5. The first offset after this instruction
     """
     n_args: int = 0
     arg: int = 0
