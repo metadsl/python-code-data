@@ -34,12 +34,9 @@ jobs:
       - uses: actions/checkout@v2
       - run: pip install -e .[test,docs]
       - run: jupyter-book build docs --warningiserror --nitpick
-      - name: Archive docs reports
-        uses: actions/upload-artifact@v2
+      - name: Cat build logs
+        run: cat docs/_build/html/reports/usage.log
         if: failure()
-        with:
-          name: docs-reports
-          path: docs/_build/html/reports
   pre-commit:
     name: ${{ matrix.id }}
     runs-on: ubuntu-latest
