@@ -8,6 +8,8 @@ author: metadsl
 execute:
   execute_notebooks: auto
   allow_errors: False
+  # Increase timeout to five minutes
+  timeout: 300
 
 # Information about where the book exists on the web
 repository:
