@@ -32,13 +32,14 @@ test = [
     "hypothesmith",
     "mypy",
     "pre-commit",
-    "pytest-subtests"
+    "pytest-subtests",
 ]
 
 docs = [
     "jupyter-book",
-#    "sphinx-autoapi",
-    "sphinx-autodoc-typehints"
+    # Pin black until this is resolved
+    # https://github.com/executablebooks/jupyter-book/issues/1590
+    "black==21.12b0"
 ]
 
 [project.scripts]

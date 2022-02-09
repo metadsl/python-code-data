@@ -2,7 +2,7 @@ name: Test
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 jobs:
   test:
     name: test ${{ matrix.py }}
@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
-      - run: pip install -e .[test]
+      - run: pip install -r requirements.txt
       - run: pytest -v code_data
   docs:
     name: docs build
@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.10"
       - uses: actions/checkout@v2
-      - run: pip install -e .[test,docs]
+      - run: pip install -r requirements.txt
       - run: jupyter-book build docs --warningiserror --nitpick
   pre-commit:
     name: ${{ matrix.id }}
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        id: [jb-to-sphinx, isort, black, mypy]
+        id: [jb-to-sphinx, isort, black, mypy, pip-compile]
     steps:
       - name: Setup python
         uses: actions/setup-python@v2
