@@ -1,20 +1,25 @@
 # Development
 
-
-We use flit for packaging, which you can also use to setup a development environment locally:
+To setup locally, we have a `requirements.txt` pinned with all of the development
+depenencies:
 
 ```bash
-pip install flit
-flit install --symlink
+pip install -e .[docs,test]
 ```
 
-To run the the tests and mypy:
+To run the the tests:
 
 ```bash
 mypy code_data/
-pytest code_data/
 ```
 
+## Pre-commit
+
+We use pre-commit to run some linting. To run these on all files:
+
+```bash
+pre-commit run --all
+```
 
 ## Docs
 
