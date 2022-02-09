@@ -1,4 +1,0 @@
-# Add this file for `pip-compile` to work, so that it adds an editable install
-# to the `reuirements.txt`
--e file:.[test,docs]
-flit

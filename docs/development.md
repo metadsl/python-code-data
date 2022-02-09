@@ -4,7 +4,7 @@ To setup locally, we have a `requirements.txt` pinned with all of the developmen
 depenencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .[docs,test]
 ```
 
 To run the the tests:
@@ -19,26 +19,6 @@ We use pre-commit to run some linting. To run these on all files:
 
 ```bash
 pre-commit run --all
-```
-
-## Requirements
-
-We use [pip-tools](https://github.com/jazzband/pip-tools) to create a pinned
-requirements file. This makes sure that CI and development have a consistant
-environment.
-
-If you add a new dependency, run `pip-compile` to update the `requirements.txt`
-and then run `pip-sync` to update your environment with it:
-
-```bash
-pip-compile requirements.in
-pip-sync
-```
-
-To upgrade any pinned dependencies, run:
-
-```bash
-pip-compile requirements.in --upgrade --strip-extras
 ```
 
 ## Docs

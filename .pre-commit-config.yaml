@@ -21,9 +21,3 @@ repos:
     hooks:
       - id: mypy
         exclude: "docs/conf.py"
-  - repo: https://github.com/jazzband/pip-tools
-    rev: 6.5.1
-    hooks:
-      - id: pip-compile
-        files: ^(pyproject\.toml|requirements\.txt)$
-        args: [--strip-extras, requirements.in]
