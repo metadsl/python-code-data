@@ -38,7 +38,7 @@ pip-sync
 To upgrade any pinned dependencies, run:
 
 ```bash
-pip-compile requirements.in --upgrade
+pip-compile requirements.in --upgrade --strip-extras
 ```
 
 ## Docs

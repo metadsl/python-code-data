@@ -26,4 +26,4 @@ repos:
     hooks:
       - id: pip-compile
         files: ^(pyproject\.toml|requirements\.txt)$
-        args: [requirements.in]
+        args: [--strip-extras, requirements.in]
