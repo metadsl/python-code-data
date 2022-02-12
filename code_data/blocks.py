@@ -5,6 +5,7 @@ Every instruction that is jumped to starts a new block.
 
 from __future__ import annotations
 
+import ctypes
 import dis
 import sys
 from dataclasses import dataclass, field
@@ -61,7 +62,6 @@ def bytes_to_blocks(b: bytes) -> Blocks:
     # Compute a sorted list of target, to map each one to a bloc offset
     targets = sorted(targets_set)
     del targets_set
-
     # Then, iterate through each instruction to update the jump to point to the
     # block offset, instead of the bytecode offset
     block: list[Instruction]
@@ -232,6 +232,9 @@ def _parse_bytes(b: bytes) -> Iterable[tuple[int, int, int, int, int]]:
         n_args += 1
         if opcode == dis.EXTENDED_ARG:
             arg = arg << 8
+            # https://github.com/python/cpython/pull/31285
+            if arg > _c_int_upper_limit:
+                arg -= _c_int_length
         else:
             first_offset = i - ((n_args - 1) * 2)
             next_offset = i + 2
@@ -248,3 +251,11 @@ def _instrsize(arg: int) -> int:
     From https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L11-L20
     """
     return 1 if arg <= 0xFF else 2 if arg <= 0xFFFF else 3 if arg <= 0xFFFFFF else 4
+
+
+# The number of bits in a signed int
+_c_int_bit_size = ctypes.sizeof(ctypes.c_int()) * 8
+# The maximum value that can be stored in a signed int
+_c_int_upper_limit = (2 ** (_c_int_bit_size - 1)) - 1
+# The number of values that can be stored in a signed int
+_c_int_length = 2 ** _c_int_bit_size
