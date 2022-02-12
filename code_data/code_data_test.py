@@ -186,7 +186,7 @@ if __name__ == '__main__':
         pytest.param(
             """while not x < y < z:
     pass""",
-            # Reduced from imagesize modeul
+            # Reduced from imagesize module
             # https://bugs.python.org/issue46724
             # negative opargs in Python 3.10
             id="bpo-46724",
