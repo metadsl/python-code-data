@@ -183,6 +183,14 @@ if __name__ == '__main__':
 ''',
             id="pip._vendor.pep517.build minimal",
         ),
+        pytest.param(
+            """while not x < y < z:
+    pass""",
+            # Reduced from imagesize modeul
+            # https://bugs.python.org/issue46724
+            # negative opargs in Python 3.10
+            id="bpo-46724",
+        ),
     ],
 )
 def test_examples(source):
@@ -242,7 +250,6 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
         warnings.simplefilter("ignore")
         for mi in pkgutil.walk_packages(onerror=lambda _name: None):
             loader: Loader = mi.module_finder.find_module(mi.name)  # type: ignore
-            loader.__ne__
             try:
                 code = loader.get_code(mi.name)  # type: ignore
             except SyntaxError:
