@@ -57,11 +57,22 @@ class OldLineTable:
         """
         return bytes(chain.from_iterable(self.items))
 
+    def verify(self):
+        for item in self.items:
+            item.verify()
+
 
 @dataclass
 class LineTableItem:
+    # TODO: Instead make mapping from bytecode offset to optinal line number
+    # (but how to represent "missing lines"??) no change of bytecode, but line number change
+    # means so line numbers were erased here
+    # With another table of bytecode offset to missing lines added after!
     line_offset: int
     bytecode_offset: int
+
+    def verify(self):
+        assert self.line_offset and self.bytecode_offset
 
     def __iter__(self) -> Iterator[int]:
         yield self.bytecode_offset

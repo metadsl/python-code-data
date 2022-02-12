@@ -85,6 +85,7 @@ class CodeData(DataclassHideDefault):
 
     def _verify(self) -> None:
         verify_block(self.blocks)
+        # self.line_table.verify()
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
