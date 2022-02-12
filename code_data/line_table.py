@@ -24,6 +24,7 @@ def from_line_table(line_table: LineTable) -> bytes:
 class NewLineTable:
     """
     PEP 626 line number table.
+    https://www.python.org/dev/peps/pep-0626/
     """
 
     bytes_: bytes = field(default=b"")
@@ -47,7 +48,7 @@ class OldLineTable:
         """
         items = []
         for i in range(0, len(bytes), 2):
-            items.append(LineTableItem(bytes[i], bytes[i + 1]))
+            items.append(LineTableItem(bytes[i + 1], bytes[i]))
         return OldLineTable(items)
 
     def to_bytes(self) -> bytes:
@@ -63,8 +64,8 @@ class LineTableItem:
     bytecode_offset: int
 
     def __iter__(self) -> Iterator[int]:
-        yield self.line_offset
         yield self.bytecode_offset
+        yield self.line_offset
 
 
 LineTable = Union[NewLineTable, OldLineTable]
