@@ -8,7 +8,7 @@ from typing import Tuple
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_table import LineTable, from_line_table, to_line_table
+from .line_table import LineTable, OldLineTable, from_line_table, to_line_table
 
 __all__ = ["CodeData"]
 
@@ -49,6 +49,7 @@ class CodeData(DataclassHideDefault):
     # code flags
     flags: FlagsData = field(default_factory=set)
 
+    # TODO: https://github.com/metadsl/python-code-data/issues/35 Make consts and names inline
     # tuple of constants used in the bytecode
     # All code objects are recursively transformed to CodeData objects
     consts: Tuple[object, ...] = field(default=(None,))
@@ -68,7 +69,7 @@ class CodeData(DataclassHideDefault):
     # number of first line in Python source code
     firstlineno: int = field(default=1)
 
-    line_table: LineTable = field(default_factory=to_line_table)
+    line_table: LineTable = field(default_factory=OldLineTable)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())
@@ -83,9 +84,10 @@ class CodeData(DataclassHideDefault):
     def line_table_bytes(self) -> bytes:
         return from_line_table(self.line_table)
 
+    # TODO: https://github.com/metadsl/python-code-data/issues/36 Add sanitize method which removes bytecode specific context, and add e2e test for it
     def _verify(self) -> None:
         verify_block(self.blocks)
-        # self.line_table.verify()
+        self.line_table.verify()
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
@@ -94,10 +96,7 @@ class CodeData(DataclassHideDefault):
         else:
             posonlyargcount = 0
 
-        if sys.version_info >= (3, 10):
-            line_table = to_line_table(code.co_linetable)  # type: ignore
-        else:
-            line_table = to_line_table(code.co_lnotab)
+        line_table = to_line_table(code)
         return cls(
             bytes_to_blocks(code.co_code),
             code.co_argcount,

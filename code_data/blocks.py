@@ -185,6 +185,9 @@ class Instruction(DataclassHideDefault):
     # the value manually to recreate the instructions
     n_args_override: Optional[int] = field(repr=False)
 
+    # The line number of the instruction
+    line_number: Optional[int] = field(default=None)
+
 
 @dataclass
 class Jump(DataclassHideDefault):
