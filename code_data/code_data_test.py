@@ -279,7 +279,9 @@ def verify_code(code: CodeType) -> None:
     resulting_code = code_data.to_code()
 
     # First compare as primitives, for better diffing if they aren't equal
-    assert code_to_primitives(code) == code_to_primitives(resulting_code)
+    assert code_to_primitives(code, verify_line_mappings=True) == code_to_primitives(
+        resulting_code, verify_line_mappings=False
+    )
 
     # Then compare objects directly, for greater equality confidence
     assert code == resulting_code
@@ -299,15 +301,21 @@ code_attributes = tuple(
 )
 
 
-def code_to_primitives(code: CodeType) -> dict[str, object]:
+def code_to_primitives(code: CodeType, verify_line_mappings: bool) -> dict[str, object]:
     """
-    Converts a code object to primitives, for better pytest diffing
+    Converts a code object to primitives, for better pytest diffing.
+
+    Also verifies that line mapping are accurate for each
     """
+    if verify_line_mappings:
+        verify_line_mapping(code)
     return {
         name: (
             # Recursively transform constants
             tuple(
-                code_to_primitives(a) if isinstance(a, CodeType) else a
+                code_to_primitives(a, verify_line_mappings)
+                if isinstance(a, CodeType)
+                else a
                 for a in getattr(code, name)
             )
             # Compare code with instructions for easier diff
