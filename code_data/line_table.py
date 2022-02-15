@@ -23,7 +23,6 @@ def from_line_table(line_table: LineTable) -> bytes:
 
 def to_mapping(code: CodeType) -> OffsetToLine:
     expanded_items = bytes_to_items(code.co_lnotab)
-    print(expanded_items)
     # return expanded_items
     collapsed_items = collapse_items(expanded_items)
     max_offset = len(code.co_code)
@@ -31,6 +30,7 @@ def to_mapping(code: CodeType) -> OffsetToLine:
 
 
 def from_mapping(offset_to_line: OffsetToLine) -> bytes:
+
     # return items_to_bytes(offset_to_line)
     return items_to_bytes(expand_items(mapping_to_items(offset_to_line)))
 
@@ -110,6 +110,7 @@ def expand_items(items: CollapsedItems) -> ExpandedItems:
         while bytecode_offset > 255:
             expanded_items.append(LineTableItem(line_offset=0, bytecode_offset=255))
             bytecode_offset -= 255
+        emitted_negative_jump = False
         # While the line offset is too large, emit the max line offset and remainting bytecode offset
         while line_offset > 127:
             expanded_items.append(
@@ -117,8 +118,18 @@ def expand_items(items: CollapsedItems) -> ExpandedItems:
             )
             line_offset -= 127
             bytecode_offset = 0
-        # If either of them having remaing, emit those
-        if line_offset > 0 or bytecode_offset > 0:
+        # Same if its too small
+        while line_offset <= -128:
+            expanded_items.append(
+                LineTableItem(line_offset=-128, bytecode_offset=bytecode_offset)
+            )
+            line_offset += 128
+            bytecode_offset = 0
+            emitted_negative_jump = True
+        # If we have extra we haven't emited, add a last one.
+        # Also emit a last one, even if we don't and we had a negative jump
+        # (for some reason this always emits an extra jump)
+        if line_offset != 0 or bytecode_offset != 0 or emitted_negative_jump:
             expanded_items.append(
                 LineTableItem(line_offset=line_offset, bytecode_offset=bytecode_offset)
             )
