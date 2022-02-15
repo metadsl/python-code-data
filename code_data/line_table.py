@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from copy import deepcopy
 from dataclasses import dataclass
 from itertools import chain
 from types import CodeType
@@ -24,6 +23,7 @@ def from_line_table(line_table: LineTable) -> bytes:
 
 def to_mapping(code: CodeType) -> OffsetToLine:
     expanded_items = bytes_to_items(code.co_lnotab)
+    print(expanded_items)
     # return expanded_items
     collapsed_items = collapse_items(expanded_items)
     max_offset = len(code.co_code)
@@ -51,7 +51,11 @@ def bytes_to_items(b: bytes) -> ExpandedItems:
     return cast(
         ExpandedItems,
         [
-            LineTableItem(bytecode_offset=b[i], line_offset=b[i + 1])
+            LineTableItem(
+                bytecode_offset=b[i],
+                # Convert byte for line offset into integer based on it being a signed integer
+                line_offset=int.from_bytes([b[i + 1]], "big", signed=True),
+            )
             for i in range(0, len(b), 2)
         ],
     )
@@ -60,7 +64,14 @@ def bytes_to_items(b: bytes) -> ExpandedItems:
 def items_to_bytes(items: ExpandedItems) -> bytes:
     return bytes(
         chain.from_iterable(
-            ([item.bytecode_offset, item.line_offset] for item in items)
+            (
+                [
+                    item.bytecode_offset,
+                    # convert possibly negative int to signed integer
+                    item.line_offset & 255,
+                ]
+                for item in items
+            )
         )
     )
 

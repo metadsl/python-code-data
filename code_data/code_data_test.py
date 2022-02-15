@@ -189,10 +189,14 @@ if __name__ == '__main__':
             "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
             id="long line and bytecode jump",
         ),
+        pytest.param(
+            "f(\n1)",
+            id="negative line jump",
+        ),
         # pytest.param(
-        #     "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
-        #     id="long negative line and bytecode jump",
-        # )
+        #     "f(\n1)",
+        #     id="negative line jump",
+        # ),
     ],
 )
 def test_examples(source):
