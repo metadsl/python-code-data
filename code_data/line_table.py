@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from copy import deepcopy
 from dataclasses import dataclass
 from itertools import chain
 from types import CodeType
@@ -23,13 +24,15 @@ def from_line_table(line_table: LineTable) -> bytes:
 
 def to_mapping(code: CodeType) -> OffsetToLine:
     expanded_items = bytes_to_items(code.co_lnotab)
+    # return expanded_items
     collapsed_items = collapse_items(expanded_items)
     max_offset = len(code.co_code)
     return items_to_mapping(collapsed_items, max_offset)
 
 
 def from_mapping(offset_to_line: OffsetToLine) -> bytes:
-    return items_to_bytes(expand_items((mapping_to_items(offset_to_line))))
+    # return items_to_bytes(offset_to_line)
+    return items_to_bytes(expand_items(mapping_to_items(offset_to_line)))
 
 
 @dataclass
@@ -64,13 +67,26 @@ def items_to_bytes(items: ExpandedItems) -> bytes:
 
 def collapse_items(items: ExpandedItems) -> CollapsedItems:
     collapsed_items = cast(CollapsedItems, [])
+
+    additional_bytecode_offset = 0
     for item in items:
+        # If there is no bytecode offset, then we assume our line offset
+        # was too large to store in one byte, so we add our current line offset to our previous
+        # (unless it is the first item, then the bytecode offset will always be 0)
         if item.bytecode_offset == 0 and collapsed_items:
             collapsed_items[-1].line_offset += item.line_offset
+        # If there is no line offset, then we add the bytecode offset to the next
+        # item
+        elif item.line_offset == 0:
+            additional_bytecode_offset += item.bytecode_offset
         else:
             collapsed_items.append(
-                LineTableItem(item.line_offset, item.bytecode_offset)
+                LineTableItem(
+                    line_offset=item.line_offset,
+                    bytecode_offset=item.bytecode_offset + additional_bytecode_offset,
+                )
             )
+            additional_bytecode_offset = 0
     return collapsed_items
 
 
@@ -79,17 +95,22 @@ def expand_items(items: CollapsedItems) -> ExpandedItems:
     for item in items:
         line_offset = item.line_offset
         bytecode_offset = item.bytecode_offset
-        while line_offset:
-            written_line_offset = min(line_offset, 127)
-            written_bytecode_offset = bytecode_offset
+        # While the bytecode offset is to large, emit the 0, 255 item
+        while bytecode_offset > 255:
+            expanded_items.append(LineTableItem(line_offset=0, bytecode_offset=255))
+            bytecode_offset -= 255
+        # While the line offset is too large, emit the max line offset and remainting bytecode offset
+        while line_offset > 127:
             expanded_items.append(
-                LineTableItem(
-                    line_offset=written_line_offset,
-                    bytecode_offset=written_bytecode_offset,
-                )
+                LineTableItem(line_offset=127, bytecode_offset=bytecode_offset)
             )
-            line_offset -= written_line_offset
-            bytecode_offset -= written_bytecode_offset
+            line_offset -= 127
+            bytecode_offset = 0
+        # If either of them having remaing, emit those
+        if line_offset > 0 or bytecode_offset > 0:
+            expanded_items.append(
+                LineTableItem(line_offset=line_offset, bytecode_offset=bytecode_offset)
+            )
     return expanded_items
 
 

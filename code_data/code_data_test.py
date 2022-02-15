@@ -64,24 +64,7 @@ NEWLINE = "\n"
         pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
         # https://bugs.python.org/msg26661
         pytest.param(
-            """
-def f(x):
-    %s
-    %s
-    %s
-    %s
-    %s
-    %s
-    %s
-    %s
-    %s
-    %s
-    while x:
-        x -= 1
-        # EXTENDED_ARG/JUMP_ABSOLUTE here
-    return x
-"""
-            % (("x = x or " + "-x" * 2500,) * 10),
+            f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
             id="long jump",
         ),
         pytest.param(
@@ -202,6 +185,14 @@ if __name__ == '__main__':
             # negative opargs in Python 3.10
             id="bpo-46724",
         ),
+        pytest.param(
+            "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
+            id="long line and bytecode jump",
+        ),
+        # pytest.param(
+        #     "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
+        #     id="long negative line and bytecode jump",
+        # )
     ],
 )
 def test_examples(source):
