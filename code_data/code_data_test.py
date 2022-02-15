@@ -12,6 +12,17 @@ import hypothesmith
 import pytest
 from hypothesis import HealthCheck, given, settings
 
+from code_data.line_table import (
+    bytes_to_items,
+    collapse_items,
+    expand_items,
+    from_mapping,
+    items_to_bytes,
+    items_to_mapping,
+    mapping_to_items,
+    to_mapping,
+)
+
 from .code_data import CodeData
 
 NEWLINE = "\n"
@@ -260,6 +271,9 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
 
 
 def verify_code(code: CodeType) -> None:
+    # First verify the line mapping is accurate
+    verify_line_mapping(code)
+
     code_data = CodeData.from_code(code)
     code_data._verify()
     resulting_code = code_data.to_code()
@@ -311,3 +325,26 @@ def code_to_dict(code: CodeType) -> dict[str, object]:
     Converts a code object to a dict for testing
     """
     return {name: getattr(code, name) for name in dir(code)}
+
+
+def verify_line_mapping(code: CodeType):
+    """
+    Verify the mapping type by testing each conversion layer and making sure they
+    are isomorphic.
+
+    The tests are written in this way, so we can see easily which layer is causing the error.
+    """
+    b = code.co_lnotab
+    max_offset = len(code.co_code)
+    expanded_items = bytes_to_items(b)
+    assert items_to_bytes(expanded_items) == b, "bytes to items to bytes"
+
+    collapsed_items = collapse_items(expanded_items)
+    assert (
+        expand_items(collapsed_items) == expanded_items
+    ), "collapsed to expanded to collapsed"
+
+    mapping = items_to_mapping(collapsed_items, max_offset)
+    assert mapping_to_items(mapping) == collapsed_items, "items to mapping to items"
+
+    assert from_mapping(to_mapping(code)) == code.co_lnotab, "bytes to mapping to bytes"

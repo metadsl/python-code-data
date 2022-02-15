@@ -8,7 +8,7 @@ from typing import Tuple
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_table import LineTable, OldLineTable, from_line_table, to_line_table
+from .line_table import LineTable, from_line_table, to_line_table
 
 __all__ = ["CodeData"]
 
@@ -69,7 +69,7 @@ class CodeData(DataclassHideDefault):
     # number of first line in Python source code
     firstlineno: int = field(default=1)
 
-    line_table: LineTable = field(default_factory=OldLineTable)
+    line_table: LineTable = field(default_factory=dict)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())
@@ -87,7 +87,6 @@ class CodeData(DataclassHideDefault):
     # TODO: https://github.com/metadsl/python-code-data/issues/36 Add sanitize method which removes bytecode specific context, and add e2e test for it
     def _verify(self) -> None:
         verify_block(self.blocks)
-        self.line_table.verify()
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
