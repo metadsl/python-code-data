@@ -193,10 +193,10 @@ if __name__ == '__main__':
             "f(\n1)",
             id="negative line jump",
         ),
-        # pytest.param(
-        #     "f(\n1)",
-        #     id="negative line jump",
-        # ),
+        pytest.param(
+            "f(" + "\n" * 256 + "1)",
+            id="long negative jump",
+        ),
     ],
 )
 def test_examples(source):
