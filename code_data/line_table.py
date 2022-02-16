@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from itertools import chain
 from types import CodeType
-from typing import NewType, Union, cast
+from typing import List, NewType, Union, cast
 
 __all__ = ["LineTable", "to_line_table", "from_line_table"]
 
@@ -29,8 +29,6 @@ def to_mapping(code: CodeType) -> LineMapping:
 
 
 def from_mapping(offset_to_line: LineMapping) -> bytes:
-
-    # return items_to_bytes(offset_to_line)
     return items_to_bytes(expand_items(mapping_to_items(offset_to_line)))
 
 
@@ -40,7 +38,7 @@ class LineTableItem:
     bytecode_offset: int
 
 
-Items = list[LineTableItem]
+Items = List[LineTableItem]
 ExpandedItems = NewType("ExpandedItems", Items)
 CollapsedItems = NewType("CollapsedItems", Items)
 
