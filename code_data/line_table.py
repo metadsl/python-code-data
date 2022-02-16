@@ -158,8 +158,12 @@ def items_to_mapping(items: CollapsedItems, max_offset: int) -> LineMapping:
     current_item_offset = 0
     last_bytecode_offset = 0
     current_line = 1
+    bytecode_offset = 0
     # Iterate through each bytecode offset and find the line number for it
-    for bytecode_offset in range(0, max_offset, 2):
+    # Also, if our bytecode offset exceeds the max code offset, keep iterating
+    # till our items are done, so that we include offsets for bytecode which
+    # were eliminated during optimization
+    while (bytecode_offset < max_offset) or current_item_offset < len(items):
         # if we haven't exhausted all the line table items
         if current_item_offset < len(items):
             # and the current bytecode offset difference is equal to the next line table
@@ -184,6 +188,8 @@ def items_to_mapping(items: CollapsedItems, max_offset: int) -> LineMapping:
                 current_item_offset += 1
         # Otherwise save as the current line
         offset_to_line[bytecode_offset] = current_line
+        bytecode_offset += 2
+
     return LineMapping(
         offset_to_line=offset_to_line,
         offset_to_noop_line_offsets=offset_to_noop_line_offsets,

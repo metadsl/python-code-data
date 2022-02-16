@@ -197,6 +197,13 @@ if __name__ == '__main__':
             "f(" + "\n" * 256 + "1)",
             id="long negative jump",
         ),
+        pytest.param(
+            r"""def _():
+    return
+    return
+""",
+            id="multiple returns",
+        ),
     ],
 )
 def test_examples(source):
@@ -204,11 +211,6 @@ def test_examples(source):
 
     verify_code(code)
 
-# TODO:
-# add support for adding and then removing lines
-# E         -  LineTableItem(line_offset=1, bytecode_offset=0),
-# E         -  LineTableItem(line_offset=1, bytecode_offset=0),
-# E         -  LineTableItem(line_offset=-2, bytecode_offset=0),
 
 def test_modules(subtests):
     # Instead of params, iterate in test so that:
@@ -221,10 +223,10 @@ def test_modules(subtests):
 
     for name, source, code in module_codes():
         failures.append((name, source))
-        # with subtests.test(name):
-        verify_code(code)
-        # If we got here, then the verification succeeded, and we can remove from failures.
-        failures.pop()
+        with subtests.test(name):
+            verify_code(code)
+            # If we got here, then the verification succeeded, and we can remove from failures.
+            failures.pop()
 
     if failures:
         # sort failures by length of source
