@@ -69,7 +69,7 @@ class CodeData(DataclassHideDefault):
     # number of first line in Python source code
     firstlineno: int = field(default=1)
 
-    line_table: LineTable = field(default_factory=dict)
+    line_table: LineTable = field(default=b"")
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())
