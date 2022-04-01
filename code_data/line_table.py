@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import chain
 from types import CodeType
 from typing import List, NewType, Union, cast
@@ -46,11 +46,12 @@ CollapsedItems = NewType("CollapsedItems", Items)
 @dataclass
 class LineMapping:
     # Mapping of bytecode offset to the line number associated with it
+    # offsets that are ommitted in the compilation will be absent from this mapping
     offset_to_line: dict[int, int]
     # Mapping of bytecode offset to list of additional line offsets emited after
     # They should always sum to 0, and are a no-op, but are sometimes emitted anyways,
     # so we want to preserve them for isomporphism.
-    offset_to_noop_line_offsets: dict[int, list[int]]
+    offset_to_noop_line_offsets: dict[int, list[int]] = field(default_factory=dict)
 
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
@@ -83,6 +84,9 @@ def items_to_bytes(items: ExpandedItems) -> bytes:
 
 
 def collapse_items(items: ExpandedItems) -> CollapsedItems:
+    """
+    Collapse the items, to deal with emitting two items for jumps that are more than a byte.
+    """
     collapsed_items = cast(CollapsedItems, [])
 
     additional_bytecode_offset = 0
@@ -108,10 +112,18 @@ def collapse_items(items: ExpandedItems) -> CollapsedItems:
                 )
             )
             additional_bytecode_offset = 0
+    if additional_bytecode_offset:
+        # If we have some bytecode offset left over, emit that as an empty line offset
+        collapsed_items.append(
+            LineTableItem(line_offset=0, bytecode_offset=additional_bytecode_offset)
+        )
     return collapsed_items
 
 
 def expand_items(items: CollapsedItems) -> ExpandedItems:
+    """
+    Expand items, making jumps that are more than a byte into multiple items.
+    """
     expanded_items = cast(ExpandedItems, [])
     for item in items:
         line_offset = item.line_offset
@@ -162,6 +174,7 @@ def items_to_mapping(items: CollapsedItems, max_offset: int) -> LineMapping:
     # till our items are done, so that we include offsets for bytecode which
     # were eliminated during optimization
     while (bytecode_offset < max_offset) or current_item_offset < len(items):
+        print(bytecode_offset, current_item_offset)
         # if we haven't exhausted all the line table items
         if current_item_offset < len(items):
             # and the current bytecode offset difference is equal to the next line table

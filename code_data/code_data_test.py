@@ -30,6 +30,8 @@ NEWLINE = "\n"
 
 EXAMPLES = [
     pytest.param("a", id="variable"),
+    pytest.param("class A:\n    a = 1\n", id="class"),
+    pytest.param("class A: pass\n", id="class empty"),
     pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
     pytest.param(
         """def _scan_once(string, idx):
