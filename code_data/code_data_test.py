@@ -28,13 +28,11 @@ from .code_data import CodeData
 NEWLINE = "\n"
 
 
-@pytest.mark.parametrize(
-    "source",
-    [
-        pytest.param("a", id="variable"),
-        pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
-        pytest.param(
-            """def _scan_once(string, idx):
+EXAMPLES = [
+    pytest.param("a", id="variable"),
+    pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
+    pytest.param(
+        """def _scan_once(string, idx):
     try:
         nextchar = string[idx]
     except IndexError:
@@ -59,16 +57,16 @@ NEWLINE = "\n"
         return True, idx + 4
     elif nextchar == "t" and string[idx : idx + 4] == "true":
         return True, idx + 4""",
-            id="json.scanner",
-        ),
-        pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
-        # https://bugs.python.org/msg26661
-        pytest.param(
-            f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
-            id="long jump",
-        ),
-        pytest.param(
-            """import json
+        id="json.scanner",
+    ),
+    pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
+    # https://bugs.python.org/msg26661
+    pytest.param(
+        f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
+        id="long jump",
+    ),
+    pytest.param(
+        """import json
 
 def test_json():
     tmpdir = tempfile.mkdtemp()
@@ -107,11 +105,11 @@ def test_json():
 
     finally:
         pass""",
-            # Tests for a relative jump which has extended args
-            id="notebook.tests.test_config_manager minimal case",
-        ),
-        pytest.param(
-            '''"""Build a project using PEP 517 hooks.
+        # Tests for a relative jump which has extended args
+        id="notebook.tests.test_config_manager minimal case",
+    ),
+    pytest.param(
+        '''"""Build a project using PEP 517 hooks.
 """
 import argparse
 import io
@@ -175,37 +173,39 @@ def main(args):
 if __name__ == '__main__':
     main(parser.parse_args())
 ''',
-            id="pip._vendor.pep517.build minimal",
-        ),
-        pytest.param(
-            """while not x < y < z:
+        id="pip._vendor.pep517.build minimal",
+    ),
+    pytest.param(
+        """while not x < y < z:
     pass""",
-            # Reduced from imagesize module
-            # https://bugs.python.org/issue46724
-            # negative opargs in Python 3.10
-            id="bpo-46724",
-        ),
-        pytest.param(
-            "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
-            id="long line and bytecode jump",
-        ),
-        pytest.param(
-            "f(\n1)",
-            id="negative line jump",
-        ),
-        pytest.param(
-            "f(" + "\n" * 256 + "1)",
-            id="long negative jump",
-        ),
-        pytest.param(
-            r"""def _():
+        # Reduced from imagesize module
+        # https://bugs.python.org/issue46724
+        # negative opargs in Python 3.10
+        id="bpo-46724",
+    ),
+    pytest.param(
+        "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
+        id="long line and bytecode jump",
+    ),
+    pytest.param(
+        "f(\n1)",
+        id="negative line jump",
+    ),
+    pytest.param(
+        "f(" + "\n" * 256 + "1)",
+        id="long negative jump",
+    ),
+    pytest.param(
+        r"""def _():
     return
     return
 """,
-            id="multiple returns",
-        ),
-    ],
-)
+        id="multiple returns",
+    ),
+]
+
+
+@pytest.mark.parametrize("source", EXAMPLES)
 def test_examples(source):
     code = compile(source, "<string>", "exec")
 
