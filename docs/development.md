@@ -11,6 +11,7 @@ To run the the tests:
 
 ```bash
 mypy code_data/
+pytest code_data
 ```
 
 ## Pre-commit
