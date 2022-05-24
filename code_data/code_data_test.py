@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import dis
 import pkgutil
+import sys
 import warnings
 from datetime import timedelta
 from dis import _get_instructions_bytes  # type: ignore
@@ -13,14 +15,13 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 
 from code_data.line_table import (
+    LineMapping,
     bytes_to_items,
     collapse_items,
     expand_items,
-    from_mapping,
     items_to_bytes,
     items_to_mapping,
     mapping_to_items,
-    to_mapping,
 )
 
 from .code_data import CodeData
@@ -342,8 +343,11 @@ def verify_line_mapping(code: CodeType):
     Verify the mapping type by testing each conversion layer and making sure they
     are isomorphic.
 
-    The tests are written in this way, so we can see easily which layer is causing the error.
+    The tests are written in this way, so we can more easily which layer is causing the error.
     """
+    # Include when we need to show locals
+    _dis = dis.Bytecode(code).dis()
+
     b = code.co_lnotab
     max_offset = len(code.co_code)
     expanded_items = bytes_to_items(b)
@@ -357,4 +361,26 @@ def verify_line_mapping(code: CodeType):
     mapping = items_to_mapping(collapsed_items, max_offset)
     assert mapping_to_items(mapping) == collapsed_items, "items to mapping to items"
 
-    assert from_mapping(to_mapping(code)) == code.co_lnotab, "bytes to mapping to bytes"
+    assert mapping_to_line_starts(mapping, code.co_firstlineno, max_offset) == dict(
+        dis.findlinestarts(code)
+    ), "mapping matches dis"
+
+
+def mapping_to_line_starts(
+    mapping: LineMapping, first_line_number: int, length_code: int
+) -> dict[int, int]:
+    """
+    Convert our mapping to a dis line starts output to verify our implementation.
+    """
+    line_starts_dict: dict[int, int] = {}
+
+    last_line = None
+    for bytecode, line in mapping.offset_to_line.items():
+        # If we are past the end of the code, don't add anymore
+        # dis does not include these, after 37
+        if sys.version_info >= (3, 8) and bytecode >= length_code:
+            break
+        if line != last_line:
+            line_starts_dict[bytecode] = line + (first_line_number)
+            last_line = line
+    return line_starts_dict
