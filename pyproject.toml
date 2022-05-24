@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://flit.readthedocs.io/en/latest/"
+Documentation = "https://python-code-data.readthedocs.io/en/latest/"
 Source = "https://github.com/metadsl/python-code-data"
 
 [project.optional-dependencies]

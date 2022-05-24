@@ -1,7 +1,6 @@
 # Development
 
-To setup locally, we have a `requirements.txt` pinned with all of the development
-depenencies:
+To setup locally:
 
 ```bash
 pip install -e .[docs,test]
