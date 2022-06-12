@@ -149,7 +149,7 @@ def test_modules():
 @settings(
     suppress_health_check=(HealthCheck.filter_too_much, HealthCheck.too_slow),
     deadline=timedelta(
-        milliseconds=400
+        milliseconds=1000
     ),  # increase deadline to account for slow times in CI
 )
 def test_generated(source_code):
