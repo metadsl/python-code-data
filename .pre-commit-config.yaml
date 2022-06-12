@@ -1,5 +1,7 @@
 default_language_version:
   python: python3.10
+exclude: (docs/conf\.py)|(code_data/code_data_test_minimized/.*)
+
 repos:
   - repo: https://github.com/executablebooks/jupyter-book
     rev: v0.12.1
@@ -15,9 +17,7 @@ repos:
     rev: 21.12b0
     hooks:
       - id: black
-        exclude: ^docs/conf\.py
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v0.931
     hooks:
       - id: mypy
-        exclude: "docs/conf.py"

@@ -45,7 +45,7 @@ docs = [
 python-code-data = "code_data.cli:main"
 
 [tool.black]
-extend-exclude = 'docs/conf\.py'
+extend-exclude = '(docs/conf\.py)|(code_data/code_data_test_minimized/.*)'
 
 [tool.isort]
 profile = "black"
