@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dis
+import pathlib
 import pkgutil
 import sys
 import warnings
@@ -12,6 +13,7 @@ from typing import Iterable
 
 import hypothesmith
 import pytest
+import rich.progress
 from hypothesis import HealthCheck, given, settings
 
 from code_data.line_table import (
@@ -29,173 +31,41 @@ from .code_data import CodeData
 NEWLINE = "\n"
 
 
+def module_file(name):
+    return pathlib.Path(__file__).parent / "code_data_test_minimized" / f"{name}.py"
+
+
+def module_param(name):
+    """
+    Create an example param for a minimized failing test case of a module
+    """
+    return pytest.param(module_file(name).read_text(), id=f"minimized {name}")
+
+
 EXAMPLES = [
+    pytest.param("\n", id="blank"),
     pytest.param("a", id="variable"),
     pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
-    pytest.param(
-        """def _scan_once(string, idx):
-    try:
-        nextchar = string[idx]
-    except IndexError:
-        raise StopIteration(idx) from None
-
-    if nextchar == '"':
-        return parse_string(string, idx + 1, strict)
-    elif nextchar == "{":
-        return parse_object(
-            (string, idx + 1),
-            strict,
-            _scan_once,
-            object_hook,
-            object_pairs_hook,
-            memo,
-        )
-    elif nextchar == "[":
-        return parse_array((string, idx + 1), _scan_once)
-    elif nextchar == "n" and string[idx : idx + 4] == "null":
-        return None, idx + 4
-    elif nextchar == "t" and string[idx : idx + 4] == "true":
-        return True, idx + 4
-    elif nextchar == "t" and string[idx : idx + 4] == "true":
-        return True, idx + 4""",
-        id="json.scanner",
-    ),
+    module_param("json.scanner"),
     pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
     # https://bugs.python.org/msg26661
     pytest.param(
         f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
         id="long jump",
     ),
-    pytest.param(
-        """import json
-
-def test_json():
-    tmpdir = tempfile.mkdtemp()
-    try:
-        root_data = dict(a=1, x=2, nest={'a':1, 'x':2})
-        with open(os.path.join(tmpdir, 'foo.json'), 'w') as f:
-            json.dump(root_data, f)
-        # also make a foo.d/ directory with multiple json files
-        os.makedirs(os.path.join(tmpdir, 'foo.d'))
-        with open(os.path.join(tmpdir, 'foo.d', 'a.json'), 'w') as f:
-            json.dump(dict(a=2, b=1, nest={'a':2, 'b':1}), f)
-        with open(os.path.join(tmpdir, 'foo.d', 'b.json'), 'w') as f:
-            json.dump(dict(a=3, b=2, c=3, nest={'a':3, 'b':2, 'c':3}, only_in_b={'x':1}), f)
-        manager = BaseJSONConfigManager(config_dir=tmpdir, read_directory=False)
-        data = manager.get('foo')
-        assert 'a' in data
-        assert 'x' in data
-        assert 'b' not in data
-        assert 'c' not in data
-        assert data['a'] == 1
-        assert 'x' in data['nest']
-        # if we write it out, it also shouldn't pick up the subdirectory
-        manager.set('foo', data)
-        data = manager.get('foo')
-        assert data == root_data
-
-        manager = BaseJSONConfigManager(config_dir=tmpdir, read_directory=True)
-        data = manager.get('foo')
-        assert 'a' in data
-        assert 'b' in data
-        assert 'c' in data
-        # files should be read in order foo.d/a.json foo.d/b.json foo.json
-        assert data['a'] == 1
-        assert data['b'] == 2
-
-
-    finally:
-        pass""",
-        # Tests for a relative jump which has extended args
-        id="notebook.tests.test_config_manager minimal case",
-    ),
-    pytest.param(
-        '''"""Build a project using PEP 517 hooks.
-"""
-import argparse
-import io
-import logging
-import os
-import shutil
-
-from .envbuild import BuildEnvironment
-from .wrappers import Pep517HookCaller
-from .dirtools import tempdir, mkdir_p
-from .compat import FileNotFoundError, toml_load
-
-log = logging.getLogger(__name__)
-
-
-def validate_system():
-    pass
-
-
-def load_system():
-    pass
-
-
-def compat_system():
-    pass
-
-
-def _do_build():
-    pass
-
-
-def build(system=None):
-    pass
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    'source_dir',
-    help="A directory containing pyproject.toml",
-)
-parser.add_argument(
-    '--binary', '-b',
-    action='store_true',
-    default=False,
-)
-parser.add_argument(
-    '--source', '-s',
-    action='store_true',
-    default=False,
-)
-parser.add_argument(
-    '--out-dir', '-o',
-    help="Destination in which to save the builds relative to source dir",
-)
-
-
-def main(args):
-    pass
-
-
-
-if __name__ == '__main__':
-    main(parser.parse_args())
-''',
-        id="pip._vendor.pep517.build minimal",
-    ),
-    pytest.param(
-        """while not x < y < z:
-    pass""",
-        # Reduced from imagesize module
-        # https://bugs.python.org/issue46724
-        # negative opargs in Python 3.10
-        id="bpo-46724",
-    ),
+    # Tests for a relative jump which has extended args
+    module_param("notebook.tests.test_config_manager"),
+    module_param("pip._vendor.pep517.build"),
+    # Reduced from imagesize module
+    # https://bugs.python.org/issue46724
+    # negative opargs in Python 3.10
+    pytest.param("while not x < y < z:\n    pass", id="bpo-46724"),
     pytest.param(
         "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
         id="long line and bytecode jump",
     ),
-    pytest.param(
-        "f(\n1)",
-        id="negative line jump",
-    ),
-    pytest.param(
-        "f(" + "\n" * 256 + "1)",
-        id="long negative jump",
-    ),
+    pytest.param("f(\n1)", id="negative line jump"),
+    pytest.param("f(" + "\n" * 256 + "1)", id="long negative jump"),
     pytest.param(
         r"""def _():
     return
@@ -203,6 +73,13 @@ if __name__ == '__main__':
 """,
         id="multiple returns",
     ),
+    module_param("appnope._dummy"),
+    module_param("turtledemo.minimal_hanoi"),
+    module_param("idlelib.idle_test.test_hyperparser"),
+    module_param("astroid.brain.brain_numpy_ndarray"),
+    module_param("sphinx_comments"),
+    module_param("pre_commit.languages.r"),
+    module_param("setuptools.config"),
 ]
 
 
@@ -213,7 +90,7 @@ def test_examples(source):
     verify_code(code)
 
 
-def test_modules(subtests):
+def test_modules():
     # Instead of params, iterate in test so that:
     # 1. the number of tests is consistant accross python versions pleasing xdist running multiple versions
     # 2. pushing loading of all modules inside generator, so that fast samples run first
@@ -222,18 +99,50 @@ def test_modules(subtests):
     # list of (name, source) tuples
     failures: list[tuple[str, str]] = []
 
-    for name, source, code in module_codes():
-        failures.append((name, source))
-        with subtests.test(name):
-            verify_code(code)
-            # If we got here, then the verification succeeded, and we can remove from failures.
-            failures.pop()
+    with rich.progress.Progress() as progress:
+        modules = track_unknown_length(progress, module_codes(), "1. Loading modules")
 
-    if failures:
-        # sort failures by length of source
-        name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
-        print(source)
-        assert False, f"Shortest module that failed was {name}"
+        for name, source, code in progress.track(
+            modules, description="2. Testing module"
+        ):
+            try:
+                verify_code(code)
+            except Exception as e:
+                failures.append((name, source))
+                progress.console.print(f"[red]{name} failed")
+
+        if failures:
+            # sort failures by length of source
+            name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
+            lines = source.splitlines()
+            # Try to do a simple minimization of the failure by removing lines from the end
+            # until it passes
+            for i in progress.track(
+                list(reversed(range(1, len(lines)))),
+                description=f"3. Minimizing failure {name}",
+            ):
+                minimized_source = "\n".join(lines[:i])
+                # If we can't compile, then skip this source
+                try:
+                    code = compile(minimized_source, "", "exec")
+                except Exception:
+                    progress.console.print("Can't compile")
+                    continue
+                else:
+                    try:
+                        verify_code(code)
+                    # If this fails, its the new minimal source
+                    except Exception as e:
+                        error = e
+                        source = minimized_source
+                        progress.console.print("New minimal source")
+                    # Otherwise, if it passes, we trimmed too much, we are done
+                    else:
+                        progress.console.print("Trimmed too much")
+                        break
+            module_file(name).write_text(source)
+            progress.console.print(f"Add example: module_param({repr(name)})")
+            assert False
 
 
 @given(source_code=hypothesmith.from_node())
@@ -347,6 +256,7 @@ def verify_line_mapping(code: CodeType):
     """
     # Include when we need to show locals
     _dis = dis.Bytecode(code).dis()
+    # print(_dis)
 
     b = code.co_lnotab
     max_offset = len(code.co_code)
@@ -384,3 +294,16 @@ def mapping_to_line_starts(
             line_starts_dict[bytecode] = line + (first_line_number)
             last_line = line
     return line_starts_dict
+
+
+def track_unknown_length(progress, iterable, description):
+    """
+    Version of Rich's track which supports iterable's of unknown length.
+    """
+    t = progress.add_task(description, total=None)
+    l = []
+    for x in iterable:
+        progress.update(t, advance=1)
+        l.append(x)
+
+    return l

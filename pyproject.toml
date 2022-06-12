@@ -31,8 +31,7 @@ test = [
     "pytest-xdist",
     "hypothesmith",
     "mypy",
-    "pre-commit",
-    "pytest-subtests",
+    "pre-commit"
 ]
 
 docs = [
@@ -51,9 +50,11 @@ extend-exclude = 'docs/conf\.py'
 [tool.isort]
 profile = "black"
 skip_gitignore = true
+extend_skip_glob = ["*/code_data_test_minimized/*"]
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
+norecursedirs = "code_data_test_minimized"
 
 [tool.mypy]
 ignore_missing_imports = true

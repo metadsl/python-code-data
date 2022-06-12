@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import collections
+import copy
 import sys
 from dataclasses import dataclass
 from itertools import chain
@@ -25,7 +27,8 @@ def to_mapping(code: CodeType) -> LineMapping:
     expanded_items = bytes_to_items(code.co_lnotab)
     collapsed_items = collapse_items(expanded_items)
     max_offset = len(code.co_code)
-    return items_to_mapping(collapsed_items, max_offset)
+    mapping = items_to_mapping(collapsed_items, max_offset)
+    return mapping
 
 
 def from_mapping(offset_to_line: LineMapping) -> bytes:
@@ -47,10 +50,19 @@ CollapsedItems = NewType("CollapsedItems", Items)
 class LineMapping:
     # Mapping of bytecode offset to the line number associated with it
     offset_to_line: dict[int, int]
+
     # Mapping of bytecode offset to list of additional line offsets emited after
-    # They should always sum to 0, and are a no-op, but are sometimes emitted anyways,
-    # so we want to preserve them for isomporphism.
-    offset_to_noop_line_offsets: dict[int, list[int]]
+    # the first one. Only included if not the default line offset, which only
+    # is split into two pieces if it's outside of the byte range to be stored in one
+    offset_to_additional_line_offsets: dict[int, list[int]]
+
+    def verify(self):
+        pass
+        # # Assert that all noop lines offsets sum to
+        # for bytecode_offset, lines_offsets in self.offset_to_noop_line_offsets.items():
+        #     assert (
+        #         sum(lines_offsets) == 0
+        #     ), f"Line offsets {lines_offsets} for bytecode offset {bytecode_offset} should sum to 0"
 
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
@@ -83,31 +95,41 @@ def items_to_bytes(items: ExpandedItems) -> bytes:
 
 
 def collapse_items(items: ExpandedItems) -> CollapsedItems:
-    collapsed_items = cast(CollapsedItems, [])
+    """
+    Collapse the bytecode and line table jumps, with any that needed
+    two bytes to represent.
 
-    additional_bytecode_offset = 0
-    for item in items:
-        # If there is no bytecode offset, then we assume our line offset
-        # was too large to store in one byte, so we add our current line offset to our previous
-        # (unless it is the first item, then the bytecode offset will always be 0)
-        if (
+    from lnotab_notes.txt:
+
+    if byte code offset jumps by more than 255 from one row to the next, or if
+    source code line number jumps by more than 127 or less than -128 from one row
+    to the next, more than one pair is written to the table.
+    """
+    collapsed_items = cast(CollapsedItems, copy.deepcopy(items))
+
+    # Iterate over the items, from the end to the begining.
+    # If there is a zero and the previous is at the limit,
+    # then remove the current, and add it to the previous.
+    for i, item, prev_item in reversed(
+        [(i, collapsed_items[i], collapsed_items[i - 1]) for i in range(1, len(items))]
+    ):
+        # For the bytecode split, the previouse line offset should be zero
+        bytecode_offset_split = (
+            prev_item.line_offset == 0
+            and prev_item.bytecode_offset >= 255
+            and item.bytecode_offset != 0
+        )
+        # However, when the line offset is split, the current bytecode offset should be zero
+        line_offset_split = (
             item.bytecode_offset == 0
-            and collapsed_items
-            and (item.line_offset > 127 or item.line_offset <= -128)
-        ):
-            collapsed_items[-1].line_offset += item.line_offset
-        # If there is no line offset, then we add the bytecode offset to the next
-        # item
-        elif item.line_offset == 0 and item.bytecode_offset != 0:
-            additional_bytecode_offset += item.bytecode_offset
-        else:
-            collapsed_items.append(
-                LineTableItem(
-                    line_offset=item.line_offset,
-                    bytecode_offset=item.bytecode_offset + additional_bytecode_offset,
-                )
-            )
-            additional_bytecode_offset = 0
+            and (prev_item.line_offset >= 127 or prev_item.line_offset <= -128)
+            and item.line_offset != 0
+        )
+        # Bytecode offset too large, so split between two
+        if bytecode_offset_split or line_offset_split:
+            del collapsed_items[i]
+            prev_item.line_offset += item.line_offset
+            prev_item.bytecode_offset += item.bytecode_offset
     return collapsed_items
 
 
@@ -123,7 +145,7 @@ def expand_items(items: CollapsedItems) -> ExpandedItems:
             expanded_items.append(LineTableItem(line_offset=0, bytecode_offset=255))
             bytecode_offset -= 255
             emitted_extra = True
-        # While the line offset is too large, emit the max line offset and remainting bytecode offset
+        # While the line offset is too large, emit the max line offset and remaining bytecode offset
         while line_offset > 127:
             expanded_items.append(
                 LineTableItem(line_offset=127, bytecode_offset=bytecode_offset)
@@ -152,10 +174,13 @@ def expand_items(items: CollapsedItems) -> ExpandedItems:
 
 def items_to_mapping(items: CollapsedItems, max_offset: int) -> LineMapping:
     offset_to_line: dict[int, int] = {}
-    offset_to_noop_line_offsets: dict[int, list[int]] = {}
+    offset_to_additional_line_offsets: dict[int, list[int]] = collections.defaultdict(
+        list
+    )
     current_item_offset = 0
     last_bytecode_offset = 0
-    current_line = 1
+    # TODO: Take in current line number and make relative
+    current_line = 0
     bytecode_offset = 0
     # Iterate through each bytecode offset and find the line number for it
     # Also, if our bytecode offset exceeds the max code offset, keep iterating
@@ -171,51 +196,62 @@ def items_to_mapping(items: CollapsedItems, max_offset: int) -> LineMapping:
                 current_line += current_item.line_offset
                 current_item_offset += 1
                 last_bytecode_offset = bytecode_offset
+
+                # If the line_offset is 0, this is really a noop, so add to dict
+                # to preserve isomporphism of this transform.
+                # (only happens in Python <= 3.8 for things like `class A: pass\n class A: pass`)
+                if current_item.line_offset == 0:
+                    offset_to_additional_line_offsets[bytecode_offset].append(0)
+
             # special case for if the bytecode offset difference of this item is 0 and
             # this is not the first item.
-            # If this is the case, then these as noop line changes, which should end up back at the same line
+            # If this is the case, then line changes should be recorded
             while (
                 current_item_offset < len(items)
                 and items[current_item_offset].bytecode_offset == 0
             ):
-                # append or create default
-                noop_offsets = offset_to_noop_line_offsets.get(bytecode_offset, [])
-                offset_to_noop_line_offsets[bytecode_offset] = noop_offsets
-
-                noop_offsets.append(items[current_item_offset].line_offset)
+                line_offset = items[current_item_offset].line_offset
+                offset_to_additional_line_offsets[bytecode_offset].append(line_offset)
                 current_item_offset += 1
+                current_line += line_offset
         # Otherwise save as the current line
         offset_to_line[bytecode_offset] = current_line
         bytecode_offset += 2
 
     return LineMapping(
         offset_to_line=offset_to_line,
-        offset_to_noop_line_offsets=offset_to_noop_line_offsets,
+        offset_to_additional_line_offsets=dict(offset_to_additional_line_offsets),
     )
 
 
 def mapping_to_items(mapping: LineMapping) -> CollapsedItems:
     items = cast(CollapsedItems, [])
-    last_line_number = 1
+    last_line_number = 0
     last_bytecode_offset = 0
     for bytecode_offset, line_number in mapping.offset_to_line.items():
-        # If the line changes, emit an item
-        if line_number != last_line_number:
+        additional_line_offsets = mapping.offset_to_additional_line_offsets.get(
+            bytecode_offset, []
+        )
+
+        first_line_offset = (
+            line_number - last_line_number - sum(additional_line_offsets)
+        )
+
+        # We should emit line offsets for each additional one, plus the first
+        # if it is nonzero
+        all_line_offsets = list(additional_line_offsets)
+        if first_line_offset:
+            all_line_offsets.insert(0, first_line_offset)
+        # Emit a list of bytecode offsets
+        for line_offset in all_line_offsets:
             items.append(
                 LineTableItem(
-                    line_offset=line_number - last_line_number,
+                    line_offset=line_offset,
                     bytecode_offset=bytecode_offset - last_bytecode_offset,
                 )
             )
-            last_line_number = line_number
             last_bytecode_offset = bytecode_offset
-        # Emit a list of noop line offset, if they were encoded, after the original offset.
-        no_op_line_offsets = mapping.offset_to_noop_line_offsets.get(
-            bytecode_offset, []
-        )
-        # assert sum(no_op_line_offsets) == 0
-        for line_offset in no_op_line_offsets:
-            items.append(LineTableItem(line_offset=line_offset, bytecode_offset=0))
+        last_line_number = line_number
 
     return items
 
