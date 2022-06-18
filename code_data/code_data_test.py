@@ -8,15 +8,18 @@ import warnings
 from datetime import timedelta
 from dis import _get_instructions_bytes  # type: ignore
 from importlib.abc import Loader
+from optparse import Option
 from types import CodeType
-from typing import Iterable
+from typing import Any, Iterable, Optional, cast
 
 import hypothesmith
 import pytest
 import rich.progress
+from attr import has
 from hypothesis import HealthCheck, given, settings
 
 from code_data.line_table import (
+    USE_LINETABLE,
     LineMapping,
     bytes_to_items,
     collapse_items,
@@ -80,6 +83,8 @@ EXAMPLES = [
     module_param("sphinx_comments"),
     module_param("pre_commit.languages.r"),
     module_param("setuptools.config"),
+    module_param("bytecode.tests.long_lines_example"),
+    module_param("prompt_toolkit.styles.named_colors"),
 ]
 
 
@@ -119,28 +124,46 @@ def test_modules():
             # until it passes
             for i in progress.track(
                 list(reversed(range(1, len(lines)))),
-                description=f"3. Minimizing failure {name}",
+                description=f"3. Trimming end lines from {name}",
             ):
                 minimized_source = "\n".join(lines[:i])
                 # If we can't compile, then skip this source
                 try:
                     code = compile(minimized_source, "", "exec")
                 except Exception:
-                    progress.console.print("Can't compile")
                     continue
                 else:
                     try:
                         verify_code(code)
                     # If this fails, its the new minimal source
                     except Exception as e:
-                        error = e
                         source = minimized_source
-                        progress.console.print("New minimal source")
                     # Otherwise, if it passes, we trimmed too much, we are done
                     else:
-                        progress.console.print("Trimmed too much")
                         break
-            module_file(name).write_text(source)
+            lines = source.splitlines()
+            for i in progress.track(
+                list(range(1, len(lines))),
+                description=f"4. Trimming begining lines from {name}",
+            ):
+                minimized_source = "\n".join(lines[i:])
+                # If we can't compile, then skip this source
+                try:
+                    code = compile(minimized_source, "", "exec")
+                except Exception:
+                    continue
+                else:
+                    try:
+                        verify_code(code)
+                    # If this fails, its the new minimal source
+                    except Exception as e:
+                        source = minimized_source
+                    # Otherwise, if it passes, we trimmed too much, we are done
+                    else:
+                        break
+            path = module_file(name)
+            path.write_text(source)
+            progress.console.print(f"Wrote minimized source to {path}")
             progress.console.print(f"Add example: module_param({repr(name)})")
             assert False
 
@@ -258,22 +281,29 @@ def verify_line_mapping(code: CodeType):
     _dis = dis.Bytecode(code).dis()
     # print(_dis)
 
-    b = code.co_lnotab
+    b = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
     max_offset = len(code.co_code)
     expanded_items = bytes_to_items(b)
     assert items_to_bytes(expanded_items) == b, "bytes to items to bytes"
 
-    collapsed_items = collapse_items(expanded_items)
+    collapsed_items = collapse_items(expanded_items, USE_LINETABLE)
     assert (
-        expand_items(collapsed_items) == expanded_items
+        expand_items(collapsed_items, USE_LINETABLE) == expanded_items
     ), "collapsed to expanded to collapsed"
 
-    mapping = items_to_mapping(collapsed_items, max_offset)
-    assert mapping_to_items(mapping) == collapsed_items, "items to mapping to items"
+    mapping = items_to_mapping(collapsed_items, max_offset, USE_LINETABLE)
+    assert (
+        mapping_to_items(mapping, USE_LINETABLE) == collapsed_items
+    ), "items to mapping to items"
 
     assert mapping_to_line_starts(mapping, code.co_firstlineno, max_offset) == dict(
         dis.findlinestarts(code)
-    ), "mapping matches dis"
+    ), "mapping matches dis.findlinestarts"
+
+    if hasattr(code, "co_lines"):
+        assert mapping == co_lines_to_mapping(
+            cast(Any, code).co_lines(), code.co_firstlineno
+        ), "mapping matches dis.co_lines"
 
 
 def mapping_to_line_starts(
@@ -290,10 +320,24 @@ def mapping_to_line_starts(
         # dis does not include these, after 37
         if sys.version_info >= (3, 8) and bytecode >= length_code:
             break
-        if line != last_line:
-            line_starts_dict[bytecode] = line + (first_line_number)
+        if line is not None and line != last_line:
+            line_starts_dict[bytecode] = line + first_line_number
             last_line = line
     return line_starts_dict
+
+
+def co_lines_to_mapping(
+    co_lines: Iterable[tuple[int, int, Optional[int]]], first_line_number: int
+) -> LineMapping:
+    """
+    Convert a code.co_lines() output to a LineMapping
+    """
+    offset_to_line: dict[int, Optional[int]] = {}
+    for start, end, line in co_lines:
+        for offset in range(start, end, 2):
+            offset_to_line[offset] = None if line is None else line - first_line_number
+
+    return LineMapping(offset_to_line)
 
 
 def track_unknown_length(progress, iterable, description):
