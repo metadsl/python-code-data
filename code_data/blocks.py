@@ -261,4 +261,4 @@ _c_int_bit_size = ctypes.sizeof(ctypes.c_int()) * 8
 # The maximum value that can be stored in a signed int
 _c_int_upper_limit = (2 ** (_c_int_bit_size - 1)) - 1
 # The number of values that can be stored in a signed int
-_c_int_length = 2 ** _c_int_bit_size
+_c_int_length = 2**_c_int_bit_size
