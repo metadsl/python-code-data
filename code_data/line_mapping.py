@@ -16,16 +16,16 @@ import sys
 from dataclasses import dataclass, field
 from itertools import chain
 from types import CodeType
-from typing import List, Optional, Union, cast
+from typing import List, Optional, cast
 
-__all__ = ["LineMapping", "to_line_table", "from_line_table"]
+__all__ = ["LineMapping", "to_line_mapping", "from_line_mapping"]
 
 
 # Whether to use the newer co_linetable field over the older co_lnotab
 USE_LINETABLE = sys.version_info >= (3, 10)
 
 
-def to_line_table(code: CodeType) -> LineMapping:
+def to_line_mapping(code: CodeType) -> LineMapping:
     """
     Convert a code type to a line mapping.
     """
@@ -38,7 +38,7 @@ def to_line_table(code: CodeType) -> LineMapping:
     return mapping
 
 
-def from_line_table(offset_to_line: LineMapping) -> bytes:
+def from_line_mapping(offset_to_line: LineMapping) -> bytes:
     """
     Convert a line mapping to a bytecode representation, either the co_linetable
     or co_lnotab field.
@@ -70,7 +70,7 @@ CollapsedItems = List[CollapsedLineTableItem]
 @dataclass
 class LineMapping:
     # Mapping of bytecode offset to the line number associated with it
-    offset_to_line: dict[int, Optional[int]]
+    offset_to_line: dict[int, Optional[int]] = field(default_factory=dict)
 
     # Mapping of bytecode offset to list of additional line offsets emited after
     # the first one. Only included if not the default line offset, which only
@@ -380,6 +380,3 @@ def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems
         last_line_number = cast(int, line_number)
 
     return items
-
-
-LineTable = Union[bytes, LineMapping]

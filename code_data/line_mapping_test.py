@@ -1,6 +1,6 @@
 import pytest
 
-from code_data.line_table import (
+from code_data.line_mapping import (
     CollapsedLineTableItem,
     LineMapping,
     LineTableItem,

@@ -16,7 +16,7 @@ import pytest
 import rich.progress
 from hypothesis import HealthCheck, given, settings
 
-from code_data.line_table import (
+from code_data.line_mapping import (
     USE_LINETABLE,
     LineMapping,
     bytes_to_items,
