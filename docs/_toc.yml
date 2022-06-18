@@ -1,6 +1,6 @@
-format: jb-article
+format: jb-book
 root: intro
-sections:
+chapters:
   - file: usage
   - file: background
   - file: faq
