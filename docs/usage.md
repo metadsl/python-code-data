@@ -25,12 +25,10 @@ The overall workflow for using the API involves some part of these steps:
 4. Turn the [`CodeData`](code_data.code_data.CodeData) back into a real Python code object.
 5. Execute the code object, using `exec`.
 
-
 ```{eval-rst}
 .. autofunction:: code_data.code_to_data
 .. autoclass:: code_data.code_data.CodeData
 ```
-
 
 Inside the blocks of the `CodeData`, is a list of `Instructions`:
 
@@ -41,11 +39,8 @@ Inside the blocks of the `CodeData`, is a list of `Instructions`:
 
 The line table is currently stored in either the old or new format, changed in Python 3.10:
 
-
 ```{eval-rst}
-.. autoclass:: code_data.line_table.NewLineTable
-.. autoclass:: code_data.line_table.OldLineTable
-.. autoclass:: code_data.line_table.LineTableItem
+.. autoclass:: code_data.line_mapping.LineMapping
 ```
 
 ### Example: Modifying Existing Bytecode

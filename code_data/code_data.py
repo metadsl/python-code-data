@@ -8,7 +8,7 @@ from typing import Tuple
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_table import LineTable, from_line_table, to_line_table
+from .line_mapping import LineMapping, from_line_mapping, to_line_mapping
 
 __all__ = ["CodeData"]
 
@@ -49,6 +49,7 @@ class CodeData(DataclassHideDefault):
     # code flags
     flags: FlagsData = field(default_factory=set)
 
+    # TODO: https://github.com/metadsl/python-code-data/issues/35 Make consts and names inline
     # tuple of constants used in the bytecode
     # All code objects are recursively transformed to CodeData objects
     consts: Tuple[object, ...] = field(default=(None,))
@@ -65,23 +66,16 @@ class CodeData(DataclassHideDefault):
     # name with which this code object was defined
     name: str = field(default="<module>")
 
+    # TODO: Remove and infer from line table
     # number of first line in Python source code
     firstlineno: int = field(default=1)
 
-    line_table: LineTable = field(default_factory=to_line_table)
+    line_mapping: LineMapping = field(default_factory=LineMapping)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())
     # tuple of names of cell variables (referenced by containing scopes)
     cellvars: Tuple[str, ...] = field(default=tuple())
-
-    @property
-    def code(self) -> bytes:
-        return blocks_to_bytes(self.blocks)
-
-    @property
-    def line_table_bytes(self) -> bytes:
-        return from_line_table(self.line_table)
 
     def _verify(self) -> None:
         verify_block(self.blocks)
@@ -93,10 +87,7 @@ class CodeData(DataclassHideDefault):
         else:
             posonlyargcount = 0
 
-        if sys.version_info >= (3, 10):
-            line_table = to_line_table(code.co_linetable)  # type: ignore
-        else:
-            line_table = to_line_table(code.co_lnotab)
+        line_table = to_line_mapping(code)
         return cls(
             bytes_to_blocks(code.co_code),
             code.co_argcount,
@@ -119,24 +110,26 @@ class CodeData(DataclassHideDefault):
     def to_code(self) -> CodeType:
         consts = tuple(map(from_code_constant, self.consts))
         flags = from_flags_data(self.flags)
+        line_table = from_line_mapping(self.line_mapping)
+        code = blocks_to_bytes(self.blocks)
         # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
+        # Only include posonlyargcount on 3.8+
         if sys.version_info >= (3, 8):
             return CodeType(
                 self.argcount,
-                # Only include this on 3.8+
                 self.posonlyargcount,
                 self.kwonlyargcount,
                 self.nlocals,
                 self.stacksize,
                 flags,
-                self.code,
+                code,
                 consts,
                 self.names,
                 self.varnames,
                 self.filename,
                 self.name,
                 self.firstlineno,
-                self.line_table_bytes,
+                line_table,
                 self.freevars,
                 self.cellvars,
             )
@@ -147,14 +140,14 @@ class CodeData(DataclassHideDefault):
                 self.nlocals,
                 self.stacksize,
                 flags,
-                self.code,
+                code,
                 consts,
                 self.names,
                 self.varnames,
                 self.filename,
                 self.name,
                 self.firstlineno,
-                self.line_table_bytes,
+                line_table,
                 self.freevars,
                 self.cellvars,
             )

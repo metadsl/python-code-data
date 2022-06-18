@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://flit.readthedocs.io/en/latest/"
+Documentation = "https://python-code-data.readthedocs.io/en/latest/"
 Source = "https://github.com/metadsl/python-code-data"
 
 [project.optional-dependencies]
@@ -31,29 +31,28 @@ test = [
     "pytest-xdist",
     "hypothesmith",
     "mypy",
-    "pre-commit",
-    "pytest-subtests",
+    "pre-commit"
 ]
 
 docs = [
     "jupyter-book",
-    # Pin black until this is resolved
-    # https://github.com/executablebooks/jupyter-book/issues/1590
-    "black==21.12b0"
+    "sphinx-panels"
 ]
 
 [project.scripts]
 python-code-data = "code_data.cli:main"
 
 [tool.black]
-extend-exclude = 'docs/conf\.py'
+extend-exclude = '(docs/conf\.py)|(code_data/code_data_test_minimized/.*)'
 
 [tool.isort]
 profile = "black"
 skip_gitignore = true
+extend_skip_glob = ["*/code_data_test_minimized/*"]
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
+norecursedirs = "code_data_test_minimized"
 
 [tool.mypy]
 ignore_missing_imports = true
