@@ -7,6 +7,13 @@ every minor release. We find that it does in fact change from release to release
 
 Under release 3.10 it underwent a large refactor to support describing bytecode
 which maps to no initial lines.
+
+It does this conversion in multiple stages, to make it conceptually cleaner.
+To go backwards, each stage also has a reverse.
+
+1. Parse bytecode into pairs of bytecode and line number offsets.
+2. Combine pairs which were seperated because of large offsets.
+3. Parse pairs into a mapping of bytecode offsets to line offsets.
 """
 
 from __future__ import annotations
