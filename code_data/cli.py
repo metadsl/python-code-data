@@ -9,7 +9,7 @@ from typing import Optional, cast
 from rich.console import Console
 from rich.syntax import Syntax
 
-from . import CodeData
+from . import CodeData, from_code_constant, from_code_data, to_code_data
 
 __all__ = ["main"]
 
@@ -72,7 +72,7 @@ def main():
         console.print(Syntax(source, "python", line_numbers=True))
     if show_dis:
         dis.dis(code)
-    code_data = CodeData.from_code(code)
+    code_data = to_code_data(code)
     console.print(code_data)
     if show_dis_after:
-        dis.dis(code_data.to_code())
+        dis.dis(from_code_data(code_data))

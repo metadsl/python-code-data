@@ -166,11 +166,11 @@ class CodeData(DataclassHideDefault):
 
 def to_code_constant(value: object) -> object:
     if isinstance(value, CodeType):
-        return CodeData.from_code(value)
+        return to_code_data(value)
     return value
 
 
 def from_code_constant(value: object) -> object:
     if isinstance(value, CodeData):
-        return value.to_code()
+        return from_code_data(value)
     return value
