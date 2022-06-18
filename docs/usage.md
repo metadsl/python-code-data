@@ -25,24 +25,6 @@ The overall workflow for using the API involves some part of these steps:
 4. Turn the [`CodeData`](code_data.code_data.CodeData) back into a real Python code object.
 5. Execute the code object, using `exec`.
 
-```{eval-rst}
-.. autofunction:: code_data.code_to_data
-.. autoclass:: code_data.code_data.CodeData
-```
-
-Inside the blocks of the `CodeData`, is a list of `Instructions`:
-
-```{eval-rst}
-.. autoclass:: code_data.blocks.Instruction
-.. autoclass:: code_data.blocks.Jump
-```
-
-The line table is currently stored in either the old or new format, changed in Python 3.10:
-
-```{eval-rst}
-.. autoclass:: code_data.line_mapping.LineMapping
-```
-
 ### Example: Modifying Existing Bytecode
 
 In this example, we will compile some code, modify the bytecode, and then turn it back into Python code to execute.

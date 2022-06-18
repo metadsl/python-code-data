@@ -1,6 +1,8 @@
-format: jb-article
+format: jb-book
 root: intro
-sections:
+chapters:
   - file: usage
-  # - file: autoapi/index
+  - file: background
+  - file: faq
+  - file: api
   - file: development
