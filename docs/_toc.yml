@@ -2,5 +2,7 @@ format: jb-article
 root: intro
 sections:
   - file: usage
-  # - file: autoapi/index
+  - file: background
+  - file: faq
+  - file: api
   - file: development
