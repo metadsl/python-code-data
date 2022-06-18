@@ -41,7 +41,7 @@ def fn(x):
     return y
 
 
-# 3. Convert it to data!
+# 3. Convert it to a dataclass!
 from code_data import to_code_data
 
 to_code_data(fn.__code__)
