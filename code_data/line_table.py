@@ -154,44 +154,55 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
         bytecode_offset = item.bytecode_offset
         emitted_extra = False
 
-        # While the bytecode offset is too large, emit the 0, 255 item
-        while bytecode_offset > MAX_BYTECODE:
-            expanded_items.append(
-                LineTableItem(
-                    line_offset=line_offset if is_linetable else 0,
-                    bytecode_offset=MAX_BYTECODE,
+        def expand_bytecode():
+            nonlocal bytecode_offset, line_offset, emitted_extra
+            # While the bytecode offset is too large, emit the 0, 255 item
+            while bytecode_offset > MAX_BYTECODE:
+                expanded_items.append(
+                    LineTableItem(
+                        line_offset=line_offset if is_linetable else 0,
+                        bytecode_offset=MAX_BYTECODE,
+                    )
                 )
-            )
-            if is_linetable:
-                line_offset = 0
-            bytecode_offset -= MAX_BYTECODE
-            emitted_extra = True
-        # While the line offset is too large, emit the max line offset and remaining bytecode offset
-        while line_offset > 127:
-            expanded_items.append(
-                LineTableItem(
-                    line_offset=127,
-                    bytecode_offset=0 if is_linetable else bytecode_offset,
-                )
-            )
-            line_offset -= 127
-            if not is_linetable:
-                bytecode_offset = 0
-            emitted_extra = True
+                if is_linetable:
+                    line_offset = 0
+                bytecode_offset -= MAX_BYTECODE
+                emitted_extra = True
 
-        # Same if its too small
-        while line_offset < MIN_LINE and line_offset != NONE_MAGIC_LINE_NUMBER:
-            expanded_items.append(
-                LineTableItem(
-                    line_offset=MIN_LINE,
-                    bytecode_offset=0 if is_linetable else bytecode_offset,
+        def expand_line():
+            nonlocal bytecode_offset, line_offset, emitted_extra
+            # While the line offset is too large, emit the max line offset and remaining bytecode offset
+            while line_offset > 127:
+                expanded_items.append(
+                    LineTableItem(
+                        line_offset=127,
+                        bytecode_offset=0 if is_linetable else bytecode_offset,
+                    )
                 )
-            )
-            line_offset -= MIN_LINE
-            if not is_linetable:
-                bytecode_offset = 0
-            emitted_extra = True
+                line_offset -= 127
+                if not is_linetable:
+                    bytecode_offset = 0
+                emitted_extra = True
 
+            # Same if its too small
+            while line_offset < MIN_LINE and line_offset != NONE_MAGIC_LINE_NUMBER:
+                expanded_items.append(
+                    LineTableItem(
+                        line_offset=MIN_LINE,
+                        bytecode_offset=0 if is_linetable else bytecode_offset,
+                    )
+                )
+                line_offset -= MIN_LINE
+                if not is_linetable:
+                    bytecode_offset = 0
+                emitted_extra = True
+
+        if is_linetable:
+            expand_line()
+            expand_bytecode()
+        else:
+            expand_bytecode()
+            expand_line()
         # If we have extra we haven't emited, add a last one.
         # Also emit a last one, even if we don't and we had a negative jump
         # (for some reason this always emits an extra jump)
