@@ -40,7 +40,7 @@ Inside the blocks of the `CodeData`, is a list of `Instructions`:
 The line table is currently stored in either the old or new format, changed in Python 3.10:
 
 ```{eval-rst}
-.. autoclass:: code_data.line_table.LineMapping
+.. autoclass:: code_data.line_mapping.LineMapping
 ```
 
 ### Example: Modifying Existing Bytecode
