@@ -79,9 +79,6 @@ class LineMapping:
         default_factory=dict
     )
 
-    def verify(self):
-        pass
-
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
     return cast(

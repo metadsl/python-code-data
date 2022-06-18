@@ -77,18 +77,8 @@ class CodeData(DataclassHideDefault):
     # tuple of names of cell variables (referenced by containing scopes)
     cellvars: Tuple[str, ...] = field(default=tuple())
 
-    @property
-    def code(self) -> bytes:
-        return blocks_to_bytes(self.blocks)
-
-    @property
-    def line_table_bytes(self) -> bytes:
-        return from_line_mapping(self.line_mapping)
-
     def _verify(self) -> None:
         verify_block(self.blocks)
-        if isinstance(self.line_mapping, LineMapping):
-            self.line_mapping.verify()
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
@@ -120,24 +110,26 @@ class CodeData(DataclassHideDefault):
     def to_code(self) -> CodeType:
         consts = tuple(map(from_code_constant, self.consts))
         flags = from_flags_data(self.flags)
+        line_table = from_line_mapping(self.line_mapping)
+        code = blocks_to_bytes(self.blocks)
         # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
+        # Only include posonlyargcount on 3.8+
         if sys.version_info >= (3, 8):
             return CodeType(
                 self.argcount,
-                # Only include this on 3.8+
                 self.posonlyargcount,
                 self.kwonlyargcount,
                 self.nlocals,
                 self.stacksize,
                 flags,
-                self.code,
+                code,
                 consts,
                 self.names,
                 self.varnames,
                 self.filename,
                 self.name,
                 self.firstlineno,
-                self.line_table_bytes,
+                line_table,
                 self.freevars,
                 self.cellvars,
             )
@@ -148,14 +140,14 @@ class CodeData(DataclassHideDefault):
                 self.nlocals,
                 self.stacksize,
                 flags,
-                self.code,
+                code,
                 consts,
                 self.names,
                 self.varnames,
                 self.filename,
                 self.name,
                 self.firstlineno,
-                self.line_table_bytes,
+                line_table,
                 self.freevars,
                 self.cellvars,
             )
