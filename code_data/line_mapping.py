@@ -81,6 +81,12 @@ class LineMapping:
 
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
+    """
+    Parse a bytecode representation of the line table into a list of pairs of
+    line and bytecode offsets.
+
+    Inverse of items_to_bytes.
+    """
     return cast(
         ExpandedItems,
         [
@@ -95,6 +101,11 @@ def bytes_to_items(b: bytes) -> ExpandedItems:
 
 
 def items_to_bytes(items: ExpandedItems) -> bytes:
+    """
+    Convert a list of pairs of line and bytecode offsets into a bytecode representation
+
+    Inverse of bytes_to_items.
+    """
     return bytes(
         chain.from_iterable(
             (
@@ -111,14 +122,16 @@ def items_to_bytes(items: ExpandedItems) -> bytes:
 
 def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
     """
-    Collapse the bytecode and line table jumps, with any that needed
-    two bytes to represent.
+    Collapse the bytecode and line table jumps, combining those that
+    were split for bytecode requirements..
 
     from lnotab_notes.txt:
 
     if byte code offset jumps by more than 255 from one row to the next, or if
     source code line number jumps by more than 127 or less than -128 from one row
     to the next, more than one pair is written to the table.
+
+    Inverse of expand_items.
     """
     collapsed_items = [
         CollapsedLineTableItem(
@@ -162,6 +175,12 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
 
 
 def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
+    """
+    Expand the bytecode and line table jumps, splitting those that
+    were combined for bytecode requirements.
+
+    Inverse of collapse_items.
+    """
     expanded_items = cast(ExpandedItems, [])
     MAX_BYTECODE = 254 if is_linetable else 255
     MIN_LINE = -127 if is_linetable else -128
@@ -237,6 +256,12 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
 def items_to_mapping(
     items: CollapsedItems, max_offset: int, is_linetable: bool
 ) -> LineMapping:
+    """
+    Convert a list of collapsed items into a mapping of bytecode offsets to line numbers.
+
+    Also include any additional items that were emitted, even if they were semantically
+    redundant, to preserve isomorphism with mapping_to_items.
+    """
     offset_to_line: dict[int, Optional[int]] = {}
     offset_to_additional_line_offsets: dict[int, list[int]] = collections.defaultdict(
         list
@@ -296,6 +321,12 @@ def items_to_mapping(
 
 
 def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems:
+    """
+    Convert a mapping of bytecode offsets to line numbers into a list of collapsed items.
+
+    Also include any additional items that were emitted, to preserve isomorphism with
+    items_to_mapping.
+    """
     items = cast(CollapsedItems, [])
     # The line table uses a different offset form, where the lines changed
     # are added at the end, instead of begining of a section
