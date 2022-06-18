@@ -1,3 +1,14 @@
+"""
+Converts the bytecode representation of the line table into a mapping of bytecode offsets
+to line offsets.
+
+Note that the format of this field is not documented and subject to change under
+every minor release. We find that it does in fact change from release to release!
+
+Under release 3.10 it underwent a large refactor to support describing bytecode
+which maps to no initial lines.
+"""
+
 from __future__ import annotations
 
 import collections
@@ -7,23 +18,17 @@ from itertools import chain
 from types import CodeType
 from typing import List, Optional, Union, cast
 
-__all__ = ["LineTable", "to_line_table", "from_line_table"]
+__all__ = ["LineMapping", "to_line_table", "from_line_table"]
 
 
-def to_line_table(code: CodeType) -> LineTable:
-    return to_mapping(code)
-
-
-def from_line_table(line_table: LineTable) -> bytes:
-    if isinstance(line_table, bytes):
-        return line_table
-    return from_mapping(line_table)
-
-
+# Whether to use the newer co_linetable field over the older co_lnotab
 USE_LINETABLE = sys.version_info >= (3, 10)
 
 
-def to_mapping(code: CodeType) -> LineMapping:
+def to_line_table(code: CodeType) -> LineMapping:
+    """
+    Convert a code type to a line mapping.
+    """
     expanded_items = bytes_to_items(
         code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
     )
@@ -33,7 +38,11 @@ def to_mapping(code: CodeType) -> LineMapping:
     return mapping
 
 
-def from_mapping(offset_to_line: LineMapping) -> bytes:
+def from_line_table(offset_to_line: LineMapping) -> bytes:
+    """
+    Convert a line mapping to a bytecode representation, either the co_linetable
+    or co_lnotab field.
+    """
     return items_to_bytes(
         expand_items(mapping_to_items(offset_to_line, USE_LINETABLE), USE_LINETABLE)
     )
@@ -72,11 +81,6 @@ class LineMapping:
 
     def verify(self):
         pass
-        # # Assert that all noop lines offsets sum to
-        # for bytecode_offset, lines_offsets in self.offset_to_noop_line_offsets.items():
-        #     assert (
-        #         sum(lines_offsets) == 0
-        #     ), f"Line offsets {lines_offsets} for bytecode offset {bytecode_offset} should sum to 0"
 
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
