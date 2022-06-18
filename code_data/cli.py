@@ -9,7 +9,7 @@ from typing import Optional, cast
 from rich.console import Console
 from rich.syntax import Syntax
 
-from code_data.code_data import CodeData
+from . import CodeData
 
 __all__ = ["main"]
 

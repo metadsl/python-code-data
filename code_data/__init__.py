@@ -16,6 +16,7 @@ from .line_mapping import LineMapping, from_line_mapping, to_line_mapping
 __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
 
+
 def to_code_data(code: CodeType) -> CodeData:
     """
     Parse a CodeType into python data structures.
