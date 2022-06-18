@@ -8,14 +8,12 @@ import warnings
 from datetime import timedelta
 from dis import _get_instructions_bytes  # type: ignore
 from importlib.abc import Loader
-from optparse import Option
 from types import CodeType
 from typing import Any, Iterable, Optional, cast
 
 import hypothesmith
 import pytest
 import rich.progress
-from attr import has
 from hypothesis import HealthCheck, given, settings
 
 from code_data.line_table import (
@@ -49,16 +47,12 @@ EXAMPLES = [
     pytest.param("\n", id="blank"),
     pytest.param("a", id="variable"),
     pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
-    module_param("json.scanner"),
     pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
     # https://bugs.python.org/msg26661
     pytest.param(
         f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
         id="long jump",
     ),
-    # Tests for a relative jump which has extended args
-    module_param("notebook.tests.test_config_manager"),
-    module_param("pip._vendor.pep517.build"),
     # Reduced from imagesize module
     # https://bugs.python.org/issue46724
     # negative opargs in Python 3.10
@@ -76,6 +70,10 @@ EXAMPLES = [
 """,
         id="multiple returns",
     ),
+    module_param("json.scanner"),
+    # Tests for a relative jump which has extended args
+    module_param("notebook.tests.test_config_manager"),
+    module_param("pip._vendor.pep517.build"),
     module_param("appnope._dummy"),
     module_param("turtledemo.minimal_hanoi"),
     module_param("idlelib.idle_test.test_hyperparser"),

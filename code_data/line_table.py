@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import collections
-import copy
 import sys
 from dataclasses import dataclass, field
 from itertools import chain
 from types import CodeType
-from typing import List, NewType, Optional, Union, cast
+from typing import List, Optional, Union, cast
 
 __all__ = ["LineTable", "to_line_table", "from_line_table"]
 
@@ -46,9 +45,17 @@ class LineTableItem:
     bytecode_offset: int
 
 
-Items = List[LineTableItem]
-ExpandedItems = NewType("ExpandedItems", Items)
-CollapsedItems = NewType("CollapsedItems", Items)
+ExpandedItems = List[LineTableItem]
+
+
+@dataclass
+class CollapsedLineTableItem:
+    # Is only None on Python 3.10+ when using line table
+    line_offset: Optional[int]
+    bytecode_offset: int
+
+
+CollapsedItems = List[CollapsedLineTableItem]
 
 
 @dataclass
@@ -112,7 +119,15 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
     source code line number jumps by more than 127 or less than -128 from one row
     to the next, more than one pair is written to the table.
     """
-    collapsed_items = cast(CollapsedItems, copy.deepcopy(items))
+    collapsed_items = [
+        CollapsedLineTableItem(
+            line_offset=None
+            if is_linetable and i.line_offset == -128
+            else i.line_offset,
+            bytecode_offset=i.bytecode_offset,
+        )
+        for i in items
+    ]
 
     # Iterate over the items, from the end to the begining.
     # If there is a zero and the previous is at the limit,
@@ -129,6 +144,7 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
         # However, when the line offset is split, the current bytecode offset should be zero
         line_offset_split = (
             (prev_item if is_linetable else item).bytecode_offset == 0
+            and (prev_item.line_offset is not None)
             and (
                 prev_item.line_offset >= 127
                 or prev_item.line_offset <= (-127 if is_linetable else -128)
@@ -138,7 +154,8 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
         # Bytecode offset too large, so split between two
         if bytecode_offset_split or line_offset_split:
             del collapsed_items[i]
-            prev_item.line_offset += item.line_offset
+            if item.line_offset:
+                prev_item.line_offset += item.line_offset  # type: ignore
             prev_item.bytecode_offset += item.bytecode_offset
     return collapsed_items
 
@@ -147,8 +164,6 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
     expanded_items = cast(ExpandedItems, [])
     MAX_BYTECODE = 254 if is_linetable else 255
     MIN_LINE = -127 if is_linetable else -128
-    # Magic line number, if the diff is this, the line is None in Python 3.10+
-    NONE_MAGIC_LINE_NUMBER = -128 if is_linetable else None
     for item in items:
         line_offset = item.line_offset
         bytecode_offset = item.bytecode_offset
@@ -160,7 +175,9 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
             while bytecode_offset > MAX_BYTECODE:
                 expanded_items.append(
                     LineTableItem(
-                        line_offset=line_offset if is_linetable else 0,
+                        line_offset=(-128 if line_offset is None else line_offset)
+                        if is_linetable
+                        else 0,
                         bytecode_offset=MAX_BYTECODE,
                     )
                 )
@@ -172,7 +189,7 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
         def expand_line():
             nonlocal bytecode_offset, line_offset, emitted_extra
             # While the line offset is too large, emit the max line offset and remaining bytecode offset
-            while line_offset > 127:
+            while line_offset is not None and line_offset > 127:
                 expanded_items.append(
                     LineTableItem(
                         line_offset=127,
@@ -185,7 +202,7 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
                 emitted_extra = True
 
             # Same if its too small
-            while line_offset < MIN_LINE and line_offset != NONE_MAGIC_LINE_NUMBER:
+            while line_offset is not None and line_offset < MIN_LINE:
                 expanded_items.append(
                     LineTableItem(
                         line_offset=MIN_LINE,
@@ -208,7 +225,10 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
         # (for some reason this always emits an extra jump)
         if line_offset != 0 or bytecode_offset != 0 or not emitted_extra:
             expanded_items.append(
-                LineTableItem(line_offset=line_offset, bytecode_offset=bytecode_offset)
+                LineTableItem(
+                    line_offset=-128 if line_offset is None else line_offset,
+                    bytecode_offset=bytecode_offset,
+                )
             )
     return expanded_items
 
@@ -226,10 +246,10 @@ def items_to_mapping(
     bytecode_offset = 0
     if is_linetable:
         for item in items:
-            if item.line_offset != -128:
+            if item.line_offset is not None:
                 current_line += item.line_offset
             for i in range(bytecode_offset, bytecode_offset + item.bytecode_offset, 2):
-                offset_to_line[i] = current_line if item.line_offset != -128 else None
+                offset_to_line[i] = None if item.line_offset is None else current_line
             bytecode_offset += item.bytecode_offset
         return LineMapping(offset_to_line, {})
     # Iterate through each bytecode offset and find the line number for it
@@ -243,7 +263,7 @@ def items_to_mapping(
             # item difference, then advance the line table item.
             current_item = items[current_item_offset]
             if (bytecode_offset - last_bytecode_offset) == current_item.bytecode_offset:
-                current_line += current_item.line_offset
+                current_line += current_item.line_offset  # type: ignore
                 current_item_offset += 1
                 last_bytecode_offset = bytecode_offset
 
@@ -261,9 +281,9 @@ def items_to_mapping(
                 and items[current_item_offset].bytecode_offset == 0
             ):
                 line_offset = items[current_item_offset].line_offset
-                offset_to_additional_line_offsets[bytecode_offset].append(line_offset)
+                offset_to_additional_line_offsets[bytecode_offset].append(line_offset)  # type: ignore
                 current_item_offset += 1
-                current_line += line_offset
+                current_line += line_offset  # type: ignore
         # Otherwise save as the current line
         offset_to_line[bytecode_offset] = current_line
         bytecode_offset += 2
@@ -292,13 +312,13 @@ def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems
                 section_line_number = line_number
                 if line_number is not None:
                     last_section_line_number = line_number
-                section_line_number_diff = -128 if line_number is None else line_number
+                section_line_number_diff = line_number
             switching_sections = line_number != section_line_number
             # If we are switching sections, add the length
             # of the last section bytecode, and its line number diff
             if switching_sections:
                 items.append(
-                    LineTableItem(
+                    CollapsedLineTableItem(
                         line_offset=section_line_number_diff,
                         bytecode_offset=bytecode_offset - section_bytecode_offset,
                     )
@@ -308,7 +328,7 @@ def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems
                 # What's the diff from if the last one is None?
                 # The diff is the difference between this section adn the last
                 section_line_number_diff = (
-                    -128
+                    None
                     if line_number is None
                     else line_number - last_section_line_number
                 )
@@ -318,7 +338,7 @@ def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems
         # If we added any bytecode, add a final section
         if bytecode_offset is not None:
             items.append(
-                LineTableItem(
+                CollapsedLineTableItem(
                     line_offset=cast(int, section_line_number_diff),
                     bytecode_offset=bytecode_offset
                     + 2
@@ -347,7 +367,7 @@ def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems
         # Emit a list of bytecode offsets
         for line_offset in all_line_offsets:
             items.append(
-                LineTableItem(
+                CollapsedLineTableItem(
                     line_offset=line_offset,
                     bytecode_offset=bytecode_offset - last_bytecode_offset,
                 )

@@ -1,6 +1,7 @@
 import pytest
 
 from code_data.line_table import (
+    CollapsedLineTableItem,
     LineMapping,
     LineTableItem,
     collapse_items,
@@ -18,9 +19,9 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=0, bytecode_offset=6),
         ],
         [
-            LineTableItem(line_offset=2, bytecode_offset=0),
-            LineTableItem(line_offset=0, bytecode_offset=6),
-            LineTableItem(line_offset=0, bytecode_offset=6),
+            CollapsedLineTableItem(line_offset=2, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=6),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=6),
         ],
         False,
         id="dont collapse small",
@@ -33,8 +34,8 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=1, bytecode_offset=8),
         ],
         [
-            LineTableItem(line_offset=1, bytecode_offset=408),
-            LineTableItem(line_offset=1, bytecode_offset=8),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=408),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=8),
         ],
         False,
         id="collapse big bytecode offset",
@@ -48,9 +49,9 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=1, bytecode_offset=8),
         ],
         [
-            LineTableItem(line_offset=127 + 127, bytecode_offset=18),
-            LineTableItem(line_offset=0, bytecode_offset=0),
-            LineTableItem(line_offset=1, bytecode_offset=8),
+            CollapsedLineTableItem(line_offset=127 + 127, bytecode_offset=18),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=8),
         ],
         False,
         id="Exactly 127 * 2 line offset",
@@ -64,10 +65,10 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=4, bytecode_offset=2),
         ],
         [
-            LineTableItem(line_offset=127, bytecode_offset=0),
-            LineTableItem(line_offset=1, bytecode_offset=4),
-            LineTableItem(line_offset=1, bytecode_offset=6),
-            LineTableItem(line_offset=4, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=127, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=6),
+            CollapsedLineTableItem(line_offset=4, bytecode_offset=2),
         ],
         False,
         id="line offset prev 0 dont expand",
@@ -77,7 +78,7 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=127, bytecode_offset=4),
             LineTableItem(line_offset=1, bytecode_offset=0),
         ],
-        [LineTableItem(line_offset=128, bytecode_offset=4)],
+        [CollapsedLineTableItem(line_offset=128, bytecode_offset=4)],
         False,
         id="long line jump 3.7",
     ),
@@ -88,8 +89,8 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=1, bytecode_offset=8),
         ],
         [
-            LineTableItem(line_offset=0, bytecode_offset=4),
-            LineTableItem(line_offset=128, bytecode_offset=8),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=128, bytecode_offset=8),
         ],
         True,
         id="long line jump 3.10",
@@ -107,7 +108,7 @@ COLLAPSE_PARAMS = [
             LineTableItem(line_offset=26, bytecode_offset=254),
             LineTableItem(line_offset=0, bytecode_offset=234),
         ],
-        [LineTableItem(line_offset=1042, bytecode_offset=488)],
+        [CollapsedLineTableItem(line_offset=1042, bytecode_offset=488)],
         True,
         id="long line and bytecode jump 3.10",
     ),
@@ -130,11 +131,11 @@ MAPPING_PARAMS = [
     pytest.param(
         # From sphinx_comments on Python 3.8
         [
-            LineTableItem(line_offset=1, bytecode_offset=0),
-            LineTableItem(line_offset=1, bytecode_offset=2),
-            LineTableItem(line_offset=-1, bytecode_offset=0),
-            LineTableItem(line_offset=2, bytecode_offset=2),
-            LineTableItem(line_offset=-2, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=-1, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=2, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=-2, bytecode_offset=2),
         ],
         LineMapping(
             offset_to_line={0: 1, 2: 1, 4: 3, 6: 1, 8: 1, 10: 1, 12: 1},
@@ -146,31 +147,31 @@ MAPPING_PARAMS = [
     pytest.param(
         # pre_commit.languages.r on Python 3.9
         [
-            LineTableItem(line_offset=5, bytecode_offset=0),
-            LineTableItem(line_offset=1, bytecode_offset=10),
-            LineTableItem(line_offset=1, bytecode_offset=10),
-            LineTableItem(line_offset=1, bytecode_offset=14),
-            LineTableItem(line_offset=1, bytecode_offset=18),
-            LineTableItem(line_offset=2, bytecode_offset=28),
-            LineTableItem(line_offset=1, bytecode_offset=2),
-            LineTableItem(line_offset=0, bytecode_offset=4),
-            LineTableItem(line_offset=0, bytecode_offset=2),
-            LineTableItem(line_offset=1, bytecode_offset=2),
-            LineTableItem(line_offset=28, bytecode_offset=12),
-            LineTableItem(line_offset=-30, bytecode_offset=2),
-            LineTableItem(line_offset=32, bytecode_offset=6),
-            LineTableItem(line_offset=1, bytecode_offset=4),
-            LineTableItem(line_offset=1, bytecode_offset=12),
-            LineTableItem(line_offset=1, bytecode_offset=2),
-            LineTableItem(line_offset=-1, bytecode_offset=4),
-            LineTableItem(line_offset=1, bytecode_offset=2),
-            LineTableItem(line_offset=0, bytecode_offset=2),
-            LineTableItem(line_offset=1, bytecode_offset=0),
-            LineTableItem(line_offset=-2, bytecode_offset=0),
-            LineTableItem(line_offset=3, bytecode_offset=2),
-            LineTableItem(line_offset=-3, bytecode_offset=2),
-            LineTableItem(line_offset=4, bytecode_offset=4),
-            LineTableItem(line_offset=-4, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=5, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=10),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=10),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=14),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=18),
+            CollapsedLineTableItem(line_offset=2, bytecode_offset=28),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=28, bytecode_offset=12),
+            CollapsedLineTableItem(line_offset=-30, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=32, bytecode_offset=6),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=12),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=-1, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=-2, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=3, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=-3, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=4, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=-4, bytecode_offset=2),
         ],
         LineMapping(
             offset_to_line={
@@ -272,11 +273,11 @@ MAPPING_PARAMS = [
     # From setuptools.config
     pytest.param(
         [
-            LineTableItem(line_offset=2, bytecode_offset=4),
-            LineTableItem(line_offset=1, bytecode_offset=2),
-            LineTableItem(line_offset=0, bytecode_offset=10),
-            LineTableItem(line_offset=0, bytecode_offset=0),
-            LineTableItem(line_offset=-2, bytecode_offset=12),
+            CollapsedLineTableItem(line_offset=2, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=2),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=10),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=0),
+            CollapsedLineTableItem(line_offset=-2, bytecode_offset=12),
         ],
         LineMapping(
             offset_to_line={
@@ -314,8 +315,8 @@ MAPPING_PARAMS = [
         # x + y
         # z
         [
-            LineTableItem(line_offset=0, bytecode_offset=8),
-            LineTableItem(line_offset=1, bytecode_offset=8),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=8),
+            CollapsedLineTableItem(line_offset=1, bytecode_offset=8),
         ],
         LineMapping(
             offset_to_line={
@@ -336,7 +337,7 @@ MAPPING_PARAMS = [
     ),
     # TODO: Add these tests to collapse
     pytest.param(
-        [LineTableItem(line_offset=128, bytecode_offset=4)],
+        [CollapsedLineTableItem(line_offset=128, bytecode_offset=4)],
         LineMapping(
             offset_to_line={0: 0, 2: 0, 4: 128, 6: 128, 8: 128, 10: 128},
             offset_to_additional_line_offsets={},
@@ -347,8 +348,8 @@ MAPPING_PARAMS = [
     ),
     pytest.param(
         [
-            LineTableItem(line_offset=0, bytecode_offset=4),
-            LineTableItem(line_offset=128, bytecode_offset=8),
+            CollapsedLineTableItem(line_offset=0, bytecode_offset=4),
+            CollapsedLineTableItem(line_offset=128, bytecode_offset=8),
         ],
         LineMapping(
             offset_to_line={0: 0, 2: 0, 4: 128, 6: 128, 8: 128, 10: 128},
