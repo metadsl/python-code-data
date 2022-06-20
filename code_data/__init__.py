@@ -11,7 +11,7 @@ from typing import Tuple
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_mapping import LineMapping, from_line_mapping, to_line_mapping
+from .line_mapping import from_line_mapping, to_line_mapping
 
 __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
@@ -30,7 +30,7 @@ def to_code_data(code: CodeType) -> CodeData:
 
     line_table = to_line_mapping(code)
     return CodeData(
-        bytes_to_blocks(code.co_code),
+        bytes_to_blocks(code.co_code, line_table),
         code.co_argcount,
         posonlyargcount,
         code.co_kwonlyargcount,
@@ -43,7 +43,6 @@ def to_code_data(code: CodeType) -> CodeData:
         code.co_filename,
         code.co_name,
         code.co_firstlineno,
-        line_table,
         code.co_freevars,
         code.co_cellvars,
     )
@@ -57,8 +56,8 @@ def from_code_data(code_data: CodeData) -> CodeType:
     """
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
-    line_table = from_line_mapping(code_data.line_mapping)
-    code = blocks_to_bytes(code_data.blocks)
+    code, line_mapping = blocks_to_bytes(code_data.blocks)
+    line_table = from_line_mapping(line_mapping)
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):
@@ -156,8 +155,6 @@ class CodeData(DataclassHideDefault):
     # TODO: Remove and infer from line table
     # number of first line in Python source code
     firstlineno: int = field(default=1)
-
-    line_mapping: LineMapping = field(default_factory=LineMapping)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())

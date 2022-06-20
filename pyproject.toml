@@ -53,6 +53,8 @@ extend_skip_glob = ["*/test_minimized/*"]
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
 norecursedirs = "test_minimized"
+python_files = ["*_test.py", "test.py"]
+
 
 [tool.mypy]
 ignore_missing_imports = true
