@@ -19,7 +19,9 @@ __version__ = "0.0.0"
 
 def to_code_data(code: CodeType) -> CodeData:
     """
-    Parse a CodeType into python data structures.
+    Parse a CodeType into python data structure.
+
+    :type code: types.CodeType
     """
     if sys.version_info >= (3, 8):
         posonlyargcount = code.co_posonlyargcount
@@ -50,6 +52,8 @@ def to_code_data(code: CodeType) -> CodeData:
 def from_code_data(code_data: CodeData) -> CodeType:
     """
     Serialize python data structures into a CodeType.
+
+    :rtype: types.CodeType
     """
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
