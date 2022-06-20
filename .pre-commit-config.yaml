@@ -1,6 +1,6 @@
 default_language_version:
   python: python3.10
-exclude: (docs/conf\.py)|(code_data/code_data_test_minimized/.*)
+exclude: (docs/conf\.py)|(code_data/test_minimized/.*)
 
 repos:
   - repo: https://github.com/executablebooks/jupyter-book

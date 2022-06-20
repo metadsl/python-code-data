@@ -43,16 +43,16 @@ docs = [
 python-code-data = "code_data.cli:main"
 
 [tool.black]
-extend-exclude = '(docs/conf\.py)|(code_data/code_data_test_minimized/.*)'
+extend-exclude = '(docs/conf\.py)|(code_data/test_minimized/.*)'
 
 [tool.isort]
 profile = "black"
 skip_gitignore = true
-extend_skip_glob = ["*/code_data_test_minimized/*"]
+extend_skip_glob = ["*/test_minimized/*"]
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
-norecursedirs = "code_data_test_minimized"
+norecursedirs = "test_minimized"
 
 [tool.mypy]
 ignore_missing_imports = true

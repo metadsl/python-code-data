@@ -22,7 +22,7 @@ The overall workflow for using the API involves some part of these steps:
 1. Get your hands on a [Code object](https://docs.python.org/3/reference/datamodel.html#index-55), like by using `compile`
 2. Turn it into data using .
 3. Modify it, traverse it, or use it for downstream analysis.
-4. Turn the [`CodeData`](code_data.code_data.CodeData) back into a real Python code object.
+4. Turn the [`CodeData`](code_data.CodeData) back into a real Python code object.
 5. Execute the code object, using `exec`.
 
 ### Example: Modifying Existing Bytecode
@@ -55,9 +55,9 @@ dis.dis(code)
 So instead, lets turn it into ✨data✨:
 
 ```{code-cell}
-from code_data import code_to_data
+from code_data import to_code_data
 
-code_data = code_to_data(code)
+code_data = to_code_data(code)
 code_data
 ```
 
@@ -88,7 +88,9 @@ code_data
 Now we can turn this back into code and exec it!
 
 ```{code-cell}
-new_code = code_data.to_code()
+from code_data import from_code_data
+
+new_code = from_code_data(code_data)
 exec(new_code)
 ```
 
@@ -104,7 +106,7 @@ our code analysis is isomporphic, meaning that when we convert to and from the
 code data, we should get back an equivalent code object.
 
 ```{code-cell}
-from code_data.code_data_test import module_codes
+from code_data.test import module_codes
 
 names_source_and_codes = list(module_codes())
 names_source_and_codes[:3]
@@ -113,7 +115,7 @@ names_source_and_codes[:3]
 Lets turn them all into code data:
 
 ```{code-cell}
-all_code_data = [code_to_data(code) for (name, source, code) in names_source_and_codes]
+all_code_data = [to_code_data(code) for (name, source, code) in names_source_and_codes]
 all_code_data[0].flags
 ```
 

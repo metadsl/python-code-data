@@ -27,13 +27,13 @@ from code_data.line_mapping import (
     mapping_to_items,
 )
 
-from .code_data import CodeData
+from . import from_code_data, to_code_data
 
 NEWLINE = "\n"
 
 
 def module_file(name):
-    return pathlib.Path(__file__).parent / "code_data_test_minimized" / f"{name}.py"
+    return pathlib.Path(__file__).parent / "test_minimized" / f"{name}.py"
 
 
 def module_param(name):
@@ -207,9 +207,9 @@ def verify_code(code: CodeType) -> None:
     # First verify the line mapping is accurate
     verify_line_mapping(code)
 
-    code_data = CodeData.from_code(code)
+    code_data = to_code_data(code)
     code_data._verify()
-    resulting_code = code_data.to_code()
+    resulting_code = from_code_data(code_data)
 
     # First compare as primitives, for better diffing if they aren't equal
     assert code_to_primitives(code, verify_line_mappings=True) == code_to_primitives(
