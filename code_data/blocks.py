@@ -94,6 +94,8 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
 
     # Mapping of block index, instruction index, to integer arg values
     args: dict[tuple[int, int], int] = {}
+
+    # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
 
         current_instruction_offset = 0
@@ -144,7 +146,7 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
 
-    # Finally go assemble the bytes
+    # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
     for block_index, block in blocks.items():
@@ -186,7 +188,6 @@ def verify_block(blocks: Blocks) -> None:
 
 @dataclass
 class Instruction(DataclassHideDefault):
-
     # The name of the instruction
     name: str = field(metadata={"positional": True})
 
@@ -282,4 +283,4 @@ _c_int_bit_size = ctypes.sizeof(ctypes.c_int()) * 8
 # The maximum value that can be stored in a signed int
 _c_int_upper_limit = (2 ** (_c_int_bit_size - 1)) - 1
 # The number of values that can be stored in a signed int
-_c_int_length = 2**_c_int_bit_size
+_c_int_length = 2 ** _c_int_bit_size

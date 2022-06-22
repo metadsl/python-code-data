@@ -86,6 +86,33 @@ class LineMapping:
         default_factory=dict
     )
 
+    def trim(self, min_offset: int) -> None:
+        """
+        Remove all offsets before the minimum
+        """
+        for offset in list(self.offset_to_line.keys()):
+            if offset < min_offset:
+                del self.offset_to_line[offset]
+
+        for offset in list(self.offset_to_additional_line_offsets.keys()):
+            if offset < min_offset:
+                del self.offset_to_additional_line_offsets[offset]
+
+    def __add__(self, other: LineMapping) -> LineMapping:
+        """
+        Combine two line mappings.
+        """
+        result = LineMapping()
+        result.offset_to_line = {
+            **self.offset_to_line,
+            **other.offset_to_line,
+        }
+        result.offset_to_additional_line_offsets = {
+            **self.offset_to_additional_line_offsets,
+            **other.offset_to_additional_line_offsets,
+        }
+        return result
+
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
     """

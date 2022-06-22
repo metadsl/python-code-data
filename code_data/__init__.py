@@ -6,12 +6,12 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from types import CodeType
-from typing import Tuple
+from typing import List, Tuple
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_mapping import from_line_mapping, to_line_mapping
+from .line_mapping import LineMapping, from_line_mapping, to_line_mapping
 
 __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
@@ -28,9 +28,14 @@ def to_code_data(code: CodeType) -> CodeData:
     else:
         posonlyargcount = 0
 
-    line_table = to_line_mapping(code)
+    line_mapping = to_line_mapping(code)
+
+    # retrieve the blocks
+    blocks = bytes_to_blocks(code.co_code, line_mapping)
+    line_mapping.trim(len(code.co_code))
     return CodeData(
-        bytes_to_blocks(code.co_code, line_table),
+        blocks,
+        line_mapping,
         code.co_argcount,
         posonlyargcount,
         code.co_kwonlyargcount,
@@ -57,7 +62,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
     code, line_mapping = blocks_to_bytes(code_data.blocks)
-    line_table = from_line_mapping(line_mapping)
+    line_table = from_line_mapping(line_mapping + code_data.additional_line_mapping)
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):
@@ -116,6 +121,10 @@ class CodeData(DataclassHideDefault):
 
     # Bytecode instructions
     blocks: Blocks = field(metadata={"positional": True})
+
+    # A list of additional line offsets for bytecode instructions
+    # past the range which exist, which were eliminated by the compiler.
+    additional_line_mapping: LineMapping = field(default_factory=LineMapping)
 
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
