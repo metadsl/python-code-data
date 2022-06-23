@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from types import CodeType
-from typing import List, Tuple
+from typing import Tuple
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
@@ -29,10 +29,8 @@ def to_code_data(code: CodeType) -> CodeData:
         posonlyargcount = 0
 
     line_mapping = to_line_mapping(code)
-
-    # retrieve the blocks
+    # retrieve the blocks and pop off used line mapping
     blocks = bytes_to_blocks(code.co_code, line_mapping)
-    line_mapping.trim(len(code.co_code))
     return CodeData(
         blocks,
         line_mapping,
@@ -62,7 +60,9 @@ def from_code_data(code_data: CodeData) -> CodeType:
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
     code, line_mapping = blocks_to_bytes(code_data.blocks)
-    line_table = from_line_mapping(line_mapping + code_data.additional_line_mapping)
+    line_mapping.update(code_data.additional_line_mapping)
+    line_table = from_line_mapping(line_mapping)
+
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):

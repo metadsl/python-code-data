@@ -83,6 +83,7 @@ EXAMPLES = [
     module_param("setuptools.config"),
     module_param("bytecode.tests.long_lines_example"),
     module_param("prompt_toolkit.styles.named_colors"),
+    module_param("pip._vendor.rich.color"),
 ]
 
 
@@ -204,9 +205,6 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
 
 
 def verify_code(code: CodeType) -> None:
-    # First verify the line mapping is accurate
-    verify_line_mapping(code)
-
     code_data = to_code_data(code)
     code_data._verify()
     resulting_code = from_code_data(code_data)
@@ -218,7 +216,7 @@ def verify_code(code: CodeType) -> None:
 
     # Then compare objects directly, for greater equality confidence
     assert code == resulting_code
-    # We used to compare the marhsalled bytes as well, but this was unstable
+    # We used to compare the marhshalled bytes as well, but this was unstable
     # due to whether the constants had refernces to them, so we disabled it
 
 

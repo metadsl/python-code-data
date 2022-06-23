@@ -58,8 +58,8 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
             name=dis.opname[opcode],
             arg=processed_arg,
             n_args_override=n_args_override,
-            line_number=line_mapping.offset_to_line[offset],
-            line_offsets_override=line_mapping.offset_to_additional_line_offsets.get(
+            line_number=line_mapping.offset_to_line.pop(offset),
+            line_offsets_override=line_mapping.offset_to_additional_line_offsets.pop(
                 offset, []
             ),
         )
@@ -283,4 +283,4 @@ _c_int_bit_size = ctypes.sizeof(ctypes.c_int()) * 8
 # The maximum value that can be stored in a signed int
 _c_int_upper_limit = (2 ** (_c_int_bit_size - 1)) - 1
 # The number of values that can be stored in a signed int
-_c_int_length = 2**_c_int_bit_size
+_c_int_length = 2 ** _c_int_bit_size
