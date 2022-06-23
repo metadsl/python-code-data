@@ -20,3 +20,9 @@ Inside the blocks of the `CodeData`, is a list of `Instructions`:
 .. autoclass:: code_data.blocks.Instruction
 .. autoclass:: code_data.blocks.Jump
 ```
+
+It also includes a `LineMapping` for additional line information:
+
+```{eval-rst}
+.. autoclass:: code_data.line_mapping.LineMapping
+```
