@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from types import CodeType
-from typing import Tuple
+from typing import Optional, Tuple
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
@@ -29,11 +29,13 @@ def to_code_data(code: CodeType) -> CodeData:
         posonlyargcount = 0
 
     line_mapping = to_line_mapping(code)
+    first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
     # retrieve the blocks and pop off used line mapping
     blocks = bytes_to_blocks(code.co_code, line_mapping)
     return CodeData(
         blocks,
         line_mapping,
+        first_line_number_override,
         code.co_argcount,
         posonlyargcount,
         code.co_kwonlyargcount,
@@ -45,7 +47,6 @@ def to_code_data(code: CodeType) -> CodeData:
         code.co_varnames,
         code.co_filename,
         code.co_name,
-        code.co_firstlineno,
         code.co_freevars,
         code.co_cellvars,
     )
@@ -60,9 +61,11 @@ def from_code_data(code_data: CodeData) -> CodeType:
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
     code, line_mapping = blocks_to_bytes(code_data.blocks)
-    line_mapping.update(code_data.additional_line_mapping)
-    line_table = from_line_mapping(line_mapping)
 
+    line_mapping.update(code_data.additional_line_mapping)
+    first_line_no = line_mapping.trim_first_line(code_data.first_line_number_override)
+
+    line_table = from_line_mapping(line_mapping)
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):
@@ -79,7 +82,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.varnames,
             code_data.filename,
             code_data.name,
-            code_data.firstlineno,
+            first_line_no,
             line_table,
             code_data.freevars,
             code_data.cellvars,
@@ -97,7 +100,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.varnames,
             code_data.filename,
             code_data.name,
-            code_data.firstlineno,
+            first_line_no,
             line_table,
             code_data.freevars,
             code_data.cellvars,
@@ -125,6 +128,10 @@ class CodeData(DataclassHideDefault):
     # A list of additional line offsets for bytecode instructions
     # past the range which exist, which were eliminated by the compiler.
     additional_line_mapping: LineMapping = field(default_factory=LineMapping)
+
+    # The first line number to use for the bytecode, if it doesn't match
+    # the first line number in the line table.
+    first_line_number_override: Optional[int] = field(default=None)
 
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
@@ -160,10 +167,6 @@ class CodeData(DataclassHideDefault):
 
     # name with which this code object was defined
     name: str = field(default="<module>")
-
-    # TODO: Remove and infer from line table
-    # number of first line in Python source code
-    firstlineno: int = field(default=1)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())
