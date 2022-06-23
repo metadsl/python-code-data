@@ -147,7 +147,7 @@ class LineMapping:
         """
         for offset, line_number in self.offset_to_line.items():
             if line_number is not None:
-                self.offset_to_line[offset] += line_offset
+                self.offset_to_line[offset] += line_offset # type: ignore
 
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
