@@ -4,5 +4,6 @@ chapters:
   - file: usage
   - file: background
   - file: faq
+  - file: design
   - file: api
   - file: development

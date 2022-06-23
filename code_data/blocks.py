@@ -9,12 +9,14 @@ import ctypes
 import dis
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
+
+from code_data.line_mapping import LineMapping
 
 from .dataclass_hide_default import DataclassHideDefault
 
 
-def bytes_to_blocks(b: bytes) -> Blocks:
+def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -56,6 +58,10 @@ def bytes_to_blocks(b: bytes) -> Blocks:
             name=dis.opname[opcode],
             arg=processed_arg,
             n_args_override=n_args_override,
+            line_number=line_mapping.offset_to_line.pop(offset),
+            line_offsets_override=line_mapping.offset_to_additional_line_offsets.pop(
+                offset, []
+            ),
         )
         offsets_and_instruction.append((offset, instruction))
 
@@ -80,7 +86,7 @@ def bytes_to_blocks(b: bytes) -> Blocks:
     return {i: block for i, block in enumerate(blocks)}
 
 
-def blocks_to_bytes(blocks: Blocks) -> bytes:
+def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -88,6 +94,8 @@ def blocks_to_bytes(blocks: Blocks) -> bytes:
 
     # Mapping of block index, instruction index, to integer arg values
     args: dict[tuple[int, int], int] = {}
+
+    # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
 
         current_instruction_offset = 0
@@ -138,10 +146,19 @@ def blocks_to_bytes(blocks: Blocks) -> bytes:
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
 
-    # Finally go assemble the bytes
+    # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
+    line_mapping = LineMapping()
     for block_index, block in blocks.items():
         for instruction_index, instruction in enumerate(block):
+            offset = len(bytes_)
+
+            line_mapping.offset_to_line[offset] = instruction.line_number
+            if instruction.line_offsets_override:
+                line_mapping.offset_to_additional_line_offsets[
+                    offset
+                ] = instruction.line_offsets_override
+
             arg_value = args[block_index, instruction_index]
             n_args = instruction.n_args_override or _instrsize(arg_value)
             # Duplicate semantics of write_op_arg
@@ -153,7 +170,7 @@ def blocks_to_bytes(blocks: Blocks) -> bytes:
                 )
                 bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
-    return bytes(bytes_)
+    return bytes(bytes_), line_mapping
 
 
 def verify_block(blocks: Blocks) -> None:
@@ -171,7 +188,6 @@ def verify_block(blocks: Blocks) -> None:
 
 @dataclass
 class Instruction(DataclassHideDefault):
-
     # The name of the instruction
     name: str = field(metadata={"positional": True})
 
@@ -187,6 +203,12 @@ class Instruction(DataclassHideDefault):
 
     # The line number of the instruction
     line_number: Optional[int] = field(default=None)
+
+    # A number of additional line offsets to include in the line mapping
+    # Unneccessary to preserve line semantics, but needed to preserve isomoprhic
+    # byte-for-byte mapping
+    # Only need in Python < 3.10
+    line_offsets_override: list[int] = field(default_factory=list)
 
 
 @dataclass

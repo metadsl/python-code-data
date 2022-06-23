@@ -21,7 +21,7 @@ Inside the blocks of the `CodeData`, is a list of `Instructions`:
 .. autoclass:: code_data.blocks.Jump
 ```
 
-The line table is currently stored in either the old or new format, changed in Python 3.10:
+It also includes a `LineMapping` for additional line information:
 
 ```{eval-rst}
 .. autoclass:: code_data.line_mapping.LineMapping

@@ -28,9 +28,12 @@ def to_code_data(code: CodeType) -> CodeData:
     else:
         posonlyargcount = 0
 
-    line_table = to_line_mapping(code)
+    line_mapping = to_line_mapping(code)
+    # retrieve the blocks and pop off used line mapping
+    blocks = bytes_to_blocks(code.co_code, line_mapping)
     return CodeData(
-        bytes_to_blocks(code.co_code),
+        blocks,
+        line_mapping,
         code.co_argcount,
         posonlyargcount,
         code.co_kwonlyargcount,
@@ -43,7 +46,6 @@ def to_code_data(code: CodeType) -> CodeData:
         code.co_filename,
         code.co_name,
         code.co_firstlineno,
-        line_table,
         code.co_freevars,
         code.co_cellvars,
     )
@@ -57,8 +59,10 @@ def from_code_data(code_data: CodeData) -> CodeType:
     """
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
-    line_table = from_line_mapping(code_data.line_mapping)
-    code = blocks_to_bytes(code_data.blocks)
+    code, line_mapping = blocks_to_bytes(code_data.blocks)
+    line_mapping.update(code_data.additional_line_mapping)
+    line_table = from_line_mapping(line_mapping)
+
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):
@@ -118,6 +122,10 @@ class CodeData(DataclassHideDefault):
     # Bytecode instructions
     blocks: Blocks = field(metadata={"positional": True})
 
+    # A list of additional line offsets for bytecode instructions
+    # past the range which exist, which were eliminated by the compiler.
+    additional_line_mapping: LineMapping = field(default_factory=LineMapping)
+
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
 
@@ -156,8 +164,6 @@ class CodeData(DataclassHideDefault):
     # TODO: Remove and infer from line table
     # number of first line in Python source code
     firstlineno: int = field(default=1)
-
-    line_mapping: LineMapping = field(default_factory=LineMapping)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: Tuple[str, ...] = field(default=tuple())

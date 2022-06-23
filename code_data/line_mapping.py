@@ -86,6 +86,27 @@ class LineMapping:
         default_factory=dict
     )
 
+    def update(self, other: LineMapping) -> None:
+        """
+        Add the other line mapping, keeping this one sorted
+        """
+
+        self.offset_to_line = dict(
+            sorted(
+                chain(self.offset_to_line.items(), other.offset_to_line.items()),
+                key=lambda item: item[0],
+            )
+        )
+        self.offset_to_additional_line_offsets = dict(
+            sorted(
+                chain(
+                    self.offset_to_additional_line_offsets.items(),
+                    other.offset_to_additional_line_offsets.items(),
+                ),
+                key=lambda item: item[0],
+            )
+        )
+
 
 def bytes_to_items(b: bytes) -> ExpandedItems:
     """
