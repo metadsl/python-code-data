@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
+from functools import singledispatch
 from types import CodeType
 from typing import Optional, Tuple
 
@@ -177,13 +178,17 @@ class CodeData(DataclassHideDefault):
         verify_block(self.blocks)
 
 
+@singledispatch
 def to_code_constant(value: object) -> object:
-    if isinstance(value, CodeType):
-        return to_code_data(value)
     return value
 
 
+to_code_constant.register(to_code_data)
+
+
+@singledispatch
 def from_code_constant(value: object) -> object:
-    if isinstance(value, CodeData):
-        return from_code_data(value)
     return value
+
+
+from_code_constant.register(from_code_data)
