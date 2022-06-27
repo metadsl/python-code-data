@@ -5,8 +5,13 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
-from types import CodeType, EllipsisType
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple, Type, Union
+from types import CodeType
+from typing import TYPE_CHECKING, FrozenSet, List, Optional, Set, Tuple, Type, Union
+
+# Only introduced in Python 3.10
+# https://github.com/python/cpython/pull/22336
+if TYPE_CHECKING:
+    from types import EllipsisType
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
@@ -182,7 +187,7 @@ ConstantDataType = Union[
     None,
     bool,
     bytes,
-    EllipsisType,
+    "EllipsisType",
     CodeData,
     complex,
     "ConstantSet",
@@ -194,7 +199,7 @@ def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, CodeType):
         return to_code_data(value)
     if isinstance(
-        value, (int, str, float, type(None), bool, bytes, EllipsisType, complex)
+        value, (int, str, float, type(None), bool, bytes, type(...), complex)
     ):
         return value
     if isinstance(value, tuple):
