@@ -17,7 +17,7 @@ __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
 
 
-@dataclass
+@dataclass(frozen=True)
 class CodeData(DataclassHideDefault):
     """
     A code object is what is seralized on disk as PYC file. It is the lowest
@@ -200,7 +200,7 @@ def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, tuple):
         return ConstantTuple(tuple(map(to_code_constant, value)))
     if isinstance(value, frozenset):
-        return ConstantSet(set(map(to_code_constant, value)))
+        return ConstantSet(frozenset(map(to_code_constant, value)))
     raise NotImplementedError(f"Unsupported constant type: {type(value)}")
 
 
@@ -214,11 +214,11 @@ def from_code_constant(value: ConstantDataType) -> object:
     return value
 
 
-@dataclass
+@dataclass(frozen=True)
 class ConstantTuple:
     tuple: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})
 
 
-@dataclass
+@dataclass(frozen=True)
 class ConstantSet:
-    frozenset: Set[ConstantDataType] = field(metadata={"positional": True})
+    frozenset: FrozenSet[ConstantDataType] = field(metadata={"positional": True})
