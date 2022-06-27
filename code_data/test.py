@@ -86,6 +86,7 @@ EXAMPLES = [
     module_param("prompt_toolkit.styles.named_colors"),
     module_param("pip._vendor.rich.color"),
     module_param("gitdb.const"),
+    module_param("flit_core.vendor.tomli._types"),
 ]
 
 

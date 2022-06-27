@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
-from types import CodeType
+from types import CodeType, EllipsisType
 from typing import Dict, List, Optional, Tuple, Union
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
@@ -176,7 +176,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
 
 ConstantDataType = Union[
-    Tuple[int, str, float, None, bool, bytes],
+    Tuple[int, str, float, None, bool, bytes, EllipsisType],
     str,
     int,
     float,
@@ -184,17 +184,20 @@ ConstantDataType = Union[
     bool,
     bytes,
     CodeData,
+    EllipsisType,
 ]
 
 
 def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, CodeType):
         return to_code_data(value)
-    if isinstance(value, (int, str, float, type(None), bool, bytes)):
+    if isinstance(value, (int, str, float, type(None), bool, bytes, EllipsisType)):
         return value
     if isinstance(value, tuple):
         for x in value:
-            if not isinstance(x, (int, str, float, type(None), bool, bytes)):
+            if not isinstance(
+                x, (int, str, float, type(None), bool, bytes, EllipsisType)
+            ):
                 raise ValueError(f"Unsupported tuple element {x}")
         return value  # type: ignore
     raise NotImplementedError(f"Unsupported constant type: {type(value)}")
