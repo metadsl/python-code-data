@@ -277,7 +277,7 @@ def verify_line_mapping(code: CodeType):
     _dis = dis.Bytecode(code).dis()
     # print(_dis)
 
-    b = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
+    b: bytes = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
     max_offset = len(code.co_code)
     expanded_items = bytes_to_items(b)
     assert items_to_bytes(expanded_items) == b, "bytes to items to bytes"
