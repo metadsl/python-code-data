@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, FrozenSet, List, Optional, Set, Tuple, Type, U
 
 # Only introduced in Python 3.10
 # https://github.com/python/cpython/pull/22336
-if TYPE_CHECKING:
+if sys.version_info >= (3, 10):
     from types import EllipsisType
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
