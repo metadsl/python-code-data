@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from types import CodeType, EllipsisType
-from typing import Dict, FrozenSet, List, Optional, Tuple, Type, Union
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple, Type, Union
 
 from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
 from .dataclass_hide_default import DataclassHideDefault
@@ -175,12 +175,17 @@ def from_code_data(code_data: CodeData) -> CodeType:
         )
 
 
-LiteralType = Union[int, str, float, None, bool, bytes, EllipsisType]
 ConstantDataType = Union[
-    LiteralType,
+    int,
+    str,
+    float,
+    None,
+    bool,
+    bytes,
+    EllipsisType,
     CodeData,
-    FrozenSet[LiteralType],
-    Tuple[LiteralType],
+    "ConstantSet",
+    "ConstantTuple",
 ]
 
 
@@ -189,17 +194,28 @@ def to_code_constant(value: object) -> ConstantDataType:
         return to_code_data(value)
     if isinstance(value, (int, str, float, type(None), bool, bytes, EllipsisType)):
         return value
-    if isinstance(value, (tuple, frozenset)):
-        for x in value:
-            if not isinstance(
-                x, (int, str, float, type(None), bool, bytes, EllipsisType)
-            ):
-                raise ValueError(f"Unsupported tuple element {x}")
-        return value  # type: ignore
+    if isinstance(value, tuple):
+        return ConstantTuple(tuple(map(to_code_constant, value)))
+    if isinstance(value, frozenset):
+        return ConstantSet(set(map(to_code_constant, value)))
     raise NotImplementedError(f"Unsupported constant type: {type(value)}")
 
 
 def from_code_constant(value: ConstantDataType) -> object:
     if isinstance(value, CodeData):
         return from_code_data(value)
+    if isinstance(value, ConstantTuple):
+        return tuple(map(from_code_constant, value.tuple))
+    if isinstance(value, ConstantSet):
+        return frozenset(map(from_code_constant, value.frozenset))
     return value
+
+
+@dataclass
+class ConstantTuple:
+    tuple: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})
+
+
+@dataclass
+class ConstantSet:
+    frozenset: Set[ConstantDataType] = field(metadata={"positional": True})

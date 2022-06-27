@@ -32,63 +32,42 @@ from . import from_code_data, to_code_data
 NEWLINE = "\n"
 
 
-def module_file(name):
-    return pathlib.Path(__file__).parent / "test_minimized" / f"{name}.py"
-
-
-def module_param(name):
-    """
-    Create an example param for a minimized failing test case of a module
-    """
-    return pytest.param(module_file(name).read_text(), id=f"minimized {name}")
-
-
-EXAMPLES = [
-    pytest.param("\n", id="blank"),
-    pytest.param("a", id="variable"),
-    pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
-    pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
-    # https://bugs.python.org/msg26661
-    pytest.param(
-        f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
-        id="long jump",
-    ),
-    # Reduced from imagesize module
-    # https://bugs.python.org/issue46724
-    # negative opargs in Python 3.10
-    pytest.param("while not x < y < z:\n    pass", id="bpo-46724"),
-    pytest.param(
-        "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
-        id="long line and bytecode jump",
-    ),
-    pytest.param("f(\n1)", id="negative line jump"),
-    pytest.param("f(" + "\n" * 256 + "1)", id="long negative jump"),
-    pytest.param(
-        r"""def _():
+EXAMPLES_DIR = pathlib.Path(__file__).parent / "test_minimized"
+EXAMPLES = (
+    [
+        pytest.param("\n", id="blank"),
+        pytest.param("a", id="variable"),
+        pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
+        pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
+        # https://bugs.python.org/msg26661
+        pytest.param(
+            f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
+            id="long jump",
+        ),
+        # Reduced from imagesize module
+        # https://bugs.python.org/issue46724
+        # negative opargs in Python 3.10
+        pytest.param("while not x < y < z:\n    pass", id="bpo-46724"),
+        pytest.param(
+            "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
+            id="long line and bytecode jump",
+        ),
+        pytest.param("f(\n1)", id="negative line jump"),
+        pytest.param("f(" + "\n" * 256 + "1)", id="long negative jump"),
+        pytest.param(
+            r"""def _():
     return
     return
 """,
-        id="multiple returns",
-    ),
-    # TODO: #46 generate these automatically
-    module_param("json.scanner"),
-    # Tests for a relative jump which has extended args
-    module_param("notebook.tests.test_config_manager"),
-    module_param("pip._vendor.pep517.build"),
-    module_param("appnope._dummy"),
-    module_param("turtledemo.minimal_hanoi"),
-    module_param("idlelib.idle_test.test_hyperparser"),
-    module_param("astroid.brain.brain_numpy_ndarray"),
-    module_param("sphinx_comments"),
-    module_param("pre_commit.languages.r"),
-    module_param("setuptools.config"),
-    module_param("bytecode.tests.long_lines_example"),
-    module_param("prompt_toolkit.styles.named_colors"),
-    module_param("pip._vendor.rich.color"),
-    module_param("gitdb.const"),
-    module_param("flit_core.vendor.tomli._types"),
-    module_param("identify.interpreters"),
-]
+            id="multiple returns",
+        ),
+    ]
+    # Read all test files from directory
+    + [
+        pytest.param(path.read_text(), id=path.stem)
+        for path in EXAMPLES_DIR.glob("*.py")
+    ]
+)
 
 
 @pytest.mark.parametrize("source", EXAMPLES)
@@ -164,10 +143,9 @@ def test_modules():
                     # Otherwise, if it passes, we trimmed too much, we are done
                     else:
                         break
-            path = module_file(name)
+            path = EXAMPLES_DIR / f"{name}.py"
             path.write_text(source)
             progress.console.print(f"Wrote minimized source to {path}")
-            progress.console.print(f"Add example: module_param({repr(name)})")
             assert False
 
 
