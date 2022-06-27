@@ -4,6 +4,7 @@
 # re-generate this one.
 ###############################################################################
 author = 'metadsl'
+autodoc_type_aliases = {'ConstantDataType': 'code_data.ConstantDataType'}
 autodoc_typehints = 'description'
 comments_config = {'hypothesis': False, 'utterances': False}
 copyright = '2021'
