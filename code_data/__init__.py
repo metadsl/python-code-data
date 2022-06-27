@@ -22,7 +22,7 @@ __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
 
 
-@dataclass(frozen=True)
+@dataclass
 class CodeData(DataclassHideDefault):
     """
     A code object is what is seralized on disk as PYC file. It is the lowest
