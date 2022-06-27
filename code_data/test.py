@@ -61,6 +61,7 @@ EXAMPLES = (
 """,
             id="multiple returns",
         ),
+        pytest.param("_ = 0j", id="complex"),
     ]
     # Read all test files from directory
     + [

@@ -184,6 +184,7 @@ ConstantDataType = Union[
     bytes,
     EllipsisType,
     CodeData,
+    complex,
     "ConstantSet",
     "ConstantTuple",
 ]
@@ -192,7 +193,9 @@ ConstantDataType = Union[
 def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, CodeType):
         return to_code_data(value)
-    if isinstance(value, (int, str, float, type(None), bool, bytes, EllipsisType)):
+    if isinstance(
+        value, (int, str, float, type(None), bool, bytes, EllipsisType, complex)
+    ):
         return value
     if isinstance(value, tuple):
         return ConstantTuple(tuple(map(to_code_constant, value)))
