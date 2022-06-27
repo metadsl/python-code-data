@@ -87,6 +87,7 @@ EXAMPLES = [
     module_param("pip._vendor.rich.color"),
     module_param("gitdb.const"),
     module_param("flit_core.vendor.tomli._types"),
+    module_param("identify.interpreters"),
 ]
 
 
