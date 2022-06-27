@@ -70,6 +70,7 @@ EXAMPLES = [
 """,
         id="multiple returns",
     ),
+    # TODO: #46 generate these automatically
     module_param("json.scanner"),
     # Tests for a relative jump which has extended args
     module_param("notebook.tests.test_config_manager"),
@@ -84,6 +85,7 @@ EXAMPLES = [
     module_param("bytecode.tests.long_lines_example"),
     module_param("prompt_toolkit.styles.named_colors"),
     module_param("pip._vendor.rich.color"),
+    module_param("gitdb.const"),
 ]
 
 

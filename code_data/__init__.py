@@ -176,18 +176,25 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
 
 ConstantDataType = Union[
-    Tuple[int, str, float, None, bool], str, int, float, None, bool, CodeData
+    Tuple[int, str, float, None, bool, bytes],
+    str,
+    int,
+    float,
+    None,
+    bool,
+    bytes,
+    CodeData,
 ]
 
 
 def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, CodeType):
         return to_code_data(value)
-    if isinstance(value, (int, str, float, type(None), bool)):
+    if isinstance(value, (int, str, float, type(None), bool, bytes)):
         return value
     if isinstance(value, tuple):
         for x in value:
-            if not isinstance(x, (int, str, float, type(None), bool)):
+            if not isinstance(x, (int, str, float, type(None), bool, bytes)):
                 raise ValueError(f"Unsupported tuple element {x}")
         return value  # type: ignore
     raise NotImplementedError(f"Unsupported constant type: {type(value)}")
@@ -197,6 +204,3 @@ def from_code_constant(value: ConstantDataType) -> object:
     if isinstance(value, CodeData):
         return from_code_data(value)
     return value
-
-
-from_code_constant.register(from_code_data)
