@@ -40,7 +40,7 @@ hypothesmith==0.2.0       # via code_data (pyproject.toml)
 identify==2.5.1           # via pre-commit
 idna==3.3                 # via anyio, requests
 imagesize==1.4.1          # via sphinx
-importlib-metadata==4.12.0  # via myst-nb
+importlib-metadata==4.2.0  # via code_data (pyproject.toml), myst-nb
 iniconfig==1.1.1          # via pytest
 ipykernel==6.15.0         # via ipywidgets, notebook
 ipython==7.34.0           # via code_data (pyproject.toml), ipykernel, ipywidgets, jupyter-sphinx, myst-nb

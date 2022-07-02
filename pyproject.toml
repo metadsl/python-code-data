@@ -34,7 +34,9 @@ dev = [
     "black",
     "mypy",
     "flake8",
-    "isort"
+    "isort",
+    # For flake8 on Python 3.7
+    "importlib-metadata<4.3"
 ]
 test = [
     "pytest>=3.6.0",
