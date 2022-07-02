@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        id: [pip-tools]
+        id: [pip-compile]
     steps:
       - name: Setup python
         uses: actions/setup-python@v2
