@@ -6,7 +6,6 @@
 #
 alabaster==0.7.12         # via sphinx
 anyio==3.6.1              # via jupyter-server
-appnope==0.1.3            # via ipykernel, ipython
 argon2-cffi==21.3.0       # via jupyter-server, notebook
 argon2-cffi-bindings==21.2.0  # via argon2-cffi
 asttokens==2.0.5          # via stack-data
