@@ -80,7 +80,8 @@ def test_examples(source):
 
 def test_modules():
     # Instead of params, iterate in test so that:
-    # 1. the number of tests is consistant accross python versions pleasing xdist running multiple versions
+    # 1. the number of tests is consistant accross python versions
+    #    pleasing xdist running multiple versions
     # 2. pushing loading of all modules inside generator, so that fast samples run first
 
     # Keep a list of failures, so we can print the shortest at the end
@@ -95,7 +96,7 @@ def test_modules():
         ):
             try:
                 verify_code(code)
-            except Exception as e:
+            except Exception:
                 failures.append((name, source))
                 progress.console.print(f"[red]{name} failed")
 
@@ -103,8 +104,8 @@ def test_modules():
             # sort failures by length of source
             name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
             lines = source.splitlines()
-            # Try to do a simple minimization of the failure by removing lines from the end
-            # until it passes
+            # Try to do a simple minimization of the failure by removing lines
+            # from the end until it passes
             for i in progress.track(
                 list(reversed(range(1, len(lines)))),
                 description=f"3. Trimming end lines from {name}",
@@ -119,7 +120,7 @@ def test_modules():
                     try:
                         verify_code(code)
                     # If this fails, its the new minimal source
-                    except Exception as e:
+                    except Exception:
                         source = minimized_source
                     # Otherwise, if it passes, we trimmed too much, we are done
                     else:
@@ -139,7 +140,7 @@ def test_modules():
                     try:
                         verify_code(code)
                     # If this fails, its the new minimal source
-                    except Exception as e:
+                    except Exception:
                         source = minimized_source
                     # Otherwise, if it passes, we trimmed too much, we are done
                     else:
@@ -254,13 +255,14 @@ def verify_line_mapping(code: CodeType):
     Verify the mapping type by testing each conversion layer and making sure they
     are isomorphic.
 
-    The tests are written in this way, so we can more easily which layer is causing the error.
+    The tests are written in this way, so we can more easily which layer is
+    causing the error.
     """
     # Include when we need to show locals
-    _dis = dis.Bytecode(code).dis()
+    # _dis = dis.Bytecode(code).dis()
     # print(_dis)
 
-    b = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
+    b: bytes = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
     max_offset = len(code.co_code)
     expanded_items = bytes_to_items(b)
     assert items_to_bytes(expanded_items) == b, "bytes to items to bytes"
@@ -324,9 +326,9 @@ def track_unknown_length(progress, iterable, description):
     Version of Rich's track which supports iterable's of unknown length.
     """
     t = progress.add_task(description, total=None)
-    l = []
+    list_ = []
     for x in iterable:
         progress.update(t, advance=1)
-        l.append(x)
+        list_.append(x)
 
-    return l
+    return list_

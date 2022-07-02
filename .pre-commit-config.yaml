@@ -12,12 +12,23 @@ repos:
     rev: 5.10.1
     hooks:
       - id: isort
-        name: isort (python)
+        name: isort
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.6.0
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.931
+    rev: v0.961
     hooks:
       - id: mypy
+  - repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+  - repo: https://github.com/jazzband/pip-tools
+    rev: 6.8.0
+    hooks:
+      - id: pip-compile
+        files: ^(pyproject\.toml|requirements\.txt)$
+        args: [--annotation-style=line, "--extra=test,docs,dev", pyproject.toml]
+# TODO: #47 Add format toml precommit

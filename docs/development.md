@@ -1,10 +1,21 @@
 # Development
 
-To setup locally:
+## Creating environment
+
+We use [pip-tools](https://github.com/jazzband/pip-tools) to pin all of our
+development dependencies from reproducability accross development and CI.
+
+To get started locally:
 
 ```bash
-pip install -e .[docs,test]
+pip install -e . -r requirements.txt
 ```
+
+If you local environment drifts from the pinned version, you can
+also run `pip-sync` to make sure you have the right versions of
+everything installed.
+
+## Tests
 
 To run the the tests:
 

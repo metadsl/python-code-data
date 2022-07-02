@@ -26,17 +26,24 @@ Documentation = "https://python-code-data.readthedocs.io/en/latest/"
 Source = "https://github.com/metadsl/python-code-data"
 
 [project.optional-dependencies]
+
+# TODO: in the future don't include this and generate from pre-commit
+# into requirements.txt
+dev = [
+    "pre-commit",
+    "black",
+    "mypy",
+    "flake8",
+    "isort"
+]
 test = [
     "pytest>=3.6.0",
-    "pytest-xdist",
-    "hypothesmith",
-    "mypy",
-    "pre-commit"
+    "hypothesmith"
 ]
 
 docs = [
     "jupyter-book",
-    "sphinx-panels"
+    # "sphinx-panels"
 ]
 
 [project.scripts]
@@ -64,4 +71,10 @@ strict_equality = true
 warn_unused_configs = true
 exclude = [
   '^docs/conf\.py$'
+]
+
+
+[tool.conda-lock]
+channels = [
+    'conda-forge', 'defaults'
 ]

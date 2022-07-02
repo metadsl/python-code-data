@@ -21,7 +21,8 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
-      - run: pip install -e .[test]
+      # TODO: #48 Only install test requirements instead of all pinned in CI
+      - run: pip install -e . -r requirements.txt
       - run: pytest -v code_data
   docs:
     name: docs build
@@ -32,24 +33,25 @@ jobs:
         with:
           python-version: "3.10"
       - uses: actions/checkout@v2
-      - run: pip install -e .[test,docs]
+      - run: pip install -e . -r requirements.txt
       - run: jupyter-book build docs --warningiserror --nitpick
       - name: Cat build logs
         run: cat docs/_build/html/reports/usage.log
         if: failure()
-  pre-commit:
-    name: ${{ matrix.id }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        id: [jb-to-sphinx, isort, black, mypy]
-    steps:
-      - name: Setup python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.10"
-      - uses: actions/checkout@v2
-      - uses: pre-commit/action@v2.0.3
-        with:
-          extra_args: ${{ matrix.id }} --all-files
+# We use pre-commit CI now because it's faster and will commit back fixes
+# pre-commit:
+#   name: ${{ matrix.id }}
+#   runs-on: ubuntu-latest
+#   strategy:
+#     fail-fast: false
+#     matrix:
+#       id: [jb-to-sphinx, isort, black, mypy]
+#   steps:
+#     - name: Setup python
+#       uses: actions/setup-python@v2
+#       with:
+#         python-version: "3.10"
+#     - uses: actions/checkout@v2
+#     - uses: pre-commit/action@v2.0.3
+#       with:
+#         extra_args: ${{ matrix.id }} --all-files
