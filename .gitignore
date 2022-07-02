@@ -3,3 +3,4 @@ DEBUG.md
 tmp.py
 __pycache__
 .vscode/settings.json
+docs/conf.py
