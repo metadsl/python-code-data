@@ -1,7 +1,8 @@
 default_language_version:
   python: python3.10
 exclude: (docs/conf\.py)|(code_data/test_minimized/.*)
-
+ci:
+  skip: [pip-compile]
 repos:
   - repo: https://github.com/executablebooks/jupyter-book
     rev: v0.12.1
@@ -35,7 +36,6 @@ repos:
             --annotation-style=line,
             "--extra=test,docs,dev",
             --allow-unsafe,
-            --pip-args="--no-cache-dir",
             pyproject.toml,
           ]
         additional_dependencies: [virtualenv]
@@ -46,7 +46,6 @@ repos:
             --annotation-style=line,
             --extra=docs,
             --allow-unsafe,
-            --pip-args="--no-cache-dir",
             --output-file=requirements.docs.txt,
             pyproject.toml,
           ]
@@ -58,7 +57,6 @@ repos:
             --annotation-style=line,
             --extra=test,
             --allow-unsafe,
-            --pip-args="--no-cache-dir",
             --output-file=requirements.test.txt,
             pyproject.toml,
           ]

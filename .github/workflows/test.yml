@@ -24,35 +24,36 @@ jobs:
       # TODO: #48 Only install test requirements instead of all pinned in CI
       - run: pip install -e . -r requirements.test.txt
       - run: pytest -v code_data
-# Just test building the docs on read the docs, not on github actions
-#   docs:
-#     name: docs build
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Setup python
-#         uses: actions/setup-python@v2
-#         with:
-#           python-version: "3.10"
-#       - uses: actions/checkout@v2
-#       - run: pip install -e . -r requirements.docs.txt
-#       - run: jupyter-book build docs --warningiserror --nitpick
-#       - name: Cat build logs
-#         run: cat docs/_build/html/reports/usage.log
-#         if: failure()
-# # We use pre-commit CI now because it's faster and will commit back fixes
-# pre-commit:
-#   name: ${{ matrix.id }}
-#   runs-on: ubuntu-latest
-#   strategy:
-#     fail-fast: false
-#     matrix:
-#       id: [jb-to-sphinx, isort, black, mypy]
-#   steps:
-#     - name: Setup python
-#       uses: actions/setup-python@v2
-#       with:
-#         python-version: "3.10"
-#     - uses: actions/checkout@v2
-#     - uses: pre-commit/action@v2.0.3
-#       with:
-#         extra_args: ${{ matrix.id }} --all-files
+  # Just test building the docs on read the docs, not on github actions
+  #   docs:
+  #     name: docs build
+  #     runs-on: ubuntu-latest
+  #     steps:
+  #       - name: Setup python
+  #         uses: actions/setup-python@v2
+  #         with:
+  #           python-version: "3.10"
+  #       - uses: actions/checkout@v2
+  #       - run: pip install -e . -r requirements.docs.txt
+  #       - run: jupyter-book build docs --warningiserror --nitpick
+  #       - name: Cat build logs
+  #         run: cat docs/_build/html/reports/usage.log
+  #         if: failure()
+  # We use pre-commit CI now because it's faster and will commit back fixes
+  # However, it doesn't work with pip-compile https://github.com/pre-commit-ci/issues/issues/133
+  pre-commit:
+    name: ${{ matrix.id }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        id: [pip-tools]
+    steps:
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+      - uses: actions/checkout@v2
+      - uses: pre-commit/action@v2.0.3
+        with:
+          extra_args: ${{ matrix.id }} --all-files
