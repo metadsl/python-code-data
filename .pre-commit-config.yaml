@@ -37,6 +37,7 @@ repos:
             --allow-unsafe,
             pyproject.toml,
           ]
+        additional_dependencies: [virtualenv]
       - id: pip-compile
         files: ^(pyproject\.toml|requirements\.docs\.txt)$
         args:
@@ -47,6 +48,7 @@ repos:
             --output-file=requirements.docs.txt,
             pyproject.toml,
           ]
+        additional_dependencies: [virtualenv]
       - id: pip-compile
         files: ^(pyproject\.toml|requirements\.test\.txt)$
         args:
@@ -57,4 +59,5 @@ repos:
             --output-file=requirements.test.txt,
             pyproject.toml,
           ]
+        additional_dependencies: [virtualenv]
 # TODO: #47 Add format toml precommit
