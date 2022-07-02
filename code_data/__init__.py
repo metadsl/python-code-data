@@ -180,6 +180,9 @@ def from_code_data(code_data: CodeData) -> CodeType:
         )
 
 
+# We need to wrap the data structures in dataclasses to be able to represent
+# them with MyPy, since it doesn't support recursive types
+# https://github.com/python/mypy/issues/731
 ConstantDataType = Union[
     int,
     str,
