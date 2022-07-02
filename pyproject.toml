@@ -8,6 +8,7 @@ authors = [
     {name = "Saul Shanabrook", email = "s.shanabrook@gmail.com"}
 ]
 readme = "README.md"
+# TODO: Make optional?
 dependencies = ["rich"]
 dynamic = ["version", "description"]
 classifiers = [
@@ -35,8 +36,6 @@ dev = [
     "mypy",
     "flake8",
     "isort",
-    # For flake8 on Python 3.7
-    "importlib-metadata<4.3"
 ]
 test = [
     "pytest>=3.6.0",
@@ -44,9 +43,7 @@ test = [
 ]
 
 docs = [
-    "jupyter-book",
-    # To preserve 3.7 support require older ipython
-    "ipython<8"
+    "jupyter-book"
 ]
 
 [project.scripts]

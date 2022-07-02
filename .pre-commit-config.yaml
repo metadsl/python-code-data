@@ -37,4 +37,24 @@ repos:
             --allow-unsafe,
             pyproject.toml,
           ]
+      - id: pip-compile
+        files: ^(pyproject\.toml|requirements\.docs\.txt)$
+        args:
+          [
+            --annotation-style=line,
+            --extra=docs,
+            --allow-unsafe,
+            --output-file=requirements.docs.txt,
+            pyproject.toml,
+          ]
+      - id: pip-compile
+        files: ^(pyproject\.toml|requirements\.test\.txt)$
+        args:
+          [
+            --annotation-style=line,
+            --extra=test,
+            --allow-unsafe,
+            --output-file=requirements.test.txt,
+            pyproject.toml,
+          ]
 # TODO: #47 Add format toml precommit
