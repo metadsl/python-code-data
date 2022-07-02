@@ -1,0 +1,1 @@
+BYTE_SPACE = b' '

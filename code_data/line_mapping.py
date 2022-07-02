@@ -1,6 +1,6 @@
 """
-Converts the bytecode representation of the line table into a mapping of bytecode offsets
-to line offsets.
+Converts the bytecode representation of the line table into a mapping of bytecode
+offsets to line offsets.
 
 Note that the format of this field is not documented and subject to change under
 every minor release. We find that it does in fact change from release to release!
@@ -162,7 +162,8 @@ def bytes_to_items(b: bytes) -> ExpandedItems:
         [
             LineTableItem(
                 bytecode_offset=b[i],
-                # Convert byte for line offset into integer based on it being a signed integer
+                # Convert byte for line offset into integer based on it being a signed
+                # integer
                 line_offset=int.from_bytes([b[i + 1]], "big", signed=True),
             )
             for i in range(0, len(b), 2)
@@ -225,7 +226,8 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
             and prev_item.bytecode_offset >= (254 if is_linetable else 255)
             and item.bytecode_offset != 0
         )
-        # However, when the line offset is split, the current bytecode offset should be zero
+        # However, when the line offset is split, the current bytecode offset should be
+        # zero
         line_offset_split = (
             (prev_item if is_linetable else item).bytecode_offset == 0
             and (prev_item.line_offset is not None)
@@ -278,7 +280,8 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
 
         def expand_line():
             nonlocal bytecode_offset, line_offset, emitted_extra
-            # While the line offset is too large, emit the max line offset and remaining bytecode offset
+            # While the line offset is too large, emit the max line offset and remaining
+            # bytecode offset
             while line_offset is not None and line_offset > 127:
                 expanded_items.append(
                     LineTableItem(
@@ -327,7 +330,8 @@ def items_to_mapping(
     items: CollapsedItems, max_offset: int, is_linetable: bool
 ) -> LineMapping:
     """
-    Convert a list of collapsed items into a mapping of bytecode offsets to line numbers.
+    Convert a list of collapsed items into a mapping of bytecode offsets to line
+    numbers.
 
     Also include any additional items that were emitted, even if they were semantically
     redundant, to preserve isomorphism with mapping_to_items.
@@ -365,7 +369,8 @@ def items_to_mapping(
 
                 # If the line_offset is 0, this is really a noop, so add to dict
                 # to preserve isomporphism of this transform.
-                # (only happens in Python <= 3.8 for things like `class A: pass\n class A: pass`)
+                # (only happens in Python <= 3.8 for things like
+                # `class A: pass\n class A: pass` )
                 if current_item.line_offset == 0:
                     offset_to_additional_line_offsets[bytecode_offset].append(0)
 
@@ -377,9 +382,11 @@ def items_to_mapping(
                 and items[current_item_offset].bytecode_offset == 0
             ):
                 line_offset = items[current_item_offset].line_offset
-                offset_to_additional_line_offsets[bytecode_offset].append(line_offset)  # type: ignore
+                offset_to_additional_line_offsets[bytecode_offset].append(
+                    cast(int, line_offset)
+                )
                 current_item_offset += 1
-                current_line += line_offset  # type: ignore
+                current_line += cast(int, line_offset)
         # Otherwise save as the current line
         offset_to_line[bytecode_offset] = current_line
         bytecode_offset += 2
@@ -392,7 +399,8 @@ def items_to_mapping(
 
 def mapping_to_items(mapping: LineMapping, is_linetable: bool) -> CollapsedItems:
     """
-    Convert a mapping of bytecode offsets to line numbers into a list of collapsed items.
+    Convert a mapping of bytecode offsets to line numbers into a list of collapsed
+    items.
 
     Also include any additional items that were emitted, to preserve isomorphism with
     items_to_mapping.

@@ -6,7 +6,7 @@ author: metadsl
 
 # See https://jupyterbook.org/content/execute.html
 execute:
-  execute_notebooks: auto
+  execute_notebooks: cache
   allow_errors: False
   # Increase timeout to five minutes
   timeout: 300
@@ -41,6 +41,8 @@ sphinx:
     # always_document_param_types: true
     # typehints_defaults: comma
 
+    autodoc_type_aliases:
+      ConstantDataType: code_data.ConstantDataType
     intersphinx_mapping:
       python:
         - https://docs.python.org/3

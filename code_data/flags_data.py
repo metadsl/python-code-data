@@ -1,6 +1,6 @@
 """
 We represent code flags as a set of literal strings, representing each
-compiler flag. 
+compiler flag.
 """
 from __future__ import annotations
 

@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import dis
 import pathlib
-import pkgutil
 import sys
 import warnings
 from datetime import timedelta
 from dis import _get_instructions_bytes  # type: ignore
-from importlib.abc import Loader
 from types import CodeType
 from typing import Any, Iterable, Optional, cast
 
@@ -16,7 +14,8 @@ import pytest
 import rich.progress
 from hypothesis import HealthCheck, given, settings
 
-from code_data.line_mapping import (
+from . import from_code_data, to_code_data
+from .line_mapping import (
     USE_LINETABLE,
     LineMapping,
     bytes_to_items,
@@ -26,65 +25,48 @@ from code_data.line_mapping import (
     items_to_mapping,
     mapping_to_items,
 )
-
-from . import from_code_data, to_code_data
+from .module_codes import module_codes
 
 NEWLINE = "\n"
 
 
-def module_file(name):
-    return pathlib.Path(__file__).parent / "test_minimized" / f"{name}.py"
-
-
-def module_param(name):
-    """
-    Create an example param for a minimized failing test case of a module
-    """
-    return pytest.param(module_file(name).read_text(), id=f"minimized {name}")
-
-
-EXAMPLES = [
-    pytest.param("\n", id="blank"),
-    pytest.param("a", id="variable"),
-    pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
-    pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
-    # https://bugs.python.org/msg26661
-    pytest.param(
-        f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
-        id="long jump",
-    ),
-    # Reduced from imagesize module
-    # https://bugs.python.org/issue46724
-    # negative opargs in Python 3.10
-    pytest.param("while not x < y < z:\n    pass", id="bpo-46724"),
-    pytest.param(
-        "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
-        id="long line and bytecode jump",
-    ),
-    pytest.param("f(\n1)", id="negative line jump"),
-    pytest.param("f(" + "\n" * 256 + "1)", id="long negative jump"),
-    pytest.param(
-        r"""def _():
+EXAMPLES_DIR = pathlib.Path(__file__).parent / "test_minimized"
+EXAMPLES = (
+    [
+        pytest.param("\n", id="blank"),
+        pytest.param("a", id="variable"),
+        pytest.param("class A: pass\nclass A: pass\n", id="duplicate class"),
+        pytest.param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
+        # https://bugs.python.org/msg26661
+        pytest.param(
+            f'x = x or {"-x" * 100}\nwhile x:\n    x -= 1',
+            id="long jump",
+        ),
+        # Reduced from imagesize module
+        # https://bugs.python.org/issue46724
+        # negative opargs in Python 3.10
+        pytest.param("while not x < y < z:\n    pass", id="bpo-46724"),
+        pytest.param(
+            "y =" + ("-x" * 100) + ("\n" * 300) + "z = y",
+            id="long line and bytecode jump",
+        ),
+        pytest.param("f(\n1)", id="negative line jump"),
+        pytest.param("f(" + "\n" * 256 + "1)", id="long negative jump"),
+        pytest.param(
+            r"""def _():
     return
     return
 """,
-        id="multiple returns",
-    ),
-    module_param("json.scanner"),
-    # Tests for a relative jump which has extended args
-    module_param("notebook.tests.test_config_manager"),
-    module_param("pip._vendor.pep517.build"),
-    module_param("appnope._dummy"),
-    module_param("turtledemo.minimal_hanoi"),
-    module_param("idlelib.idle_test.test_hyperparser"),
-    module_param("astroid.brain.brain_numpy_ndarray"),
-    module_param("sphinx_comments"),
-    module_param("pre_commit.languages.r"),
-    module_param("setuptools.config"),
-    module_param("bytecode.tests.long_lines_example"),
-    module_param("prompt_toolkit.styles.named_colors"),
-    module_param("pip._vendor.rich.color"),
-]
+            id="multiple returns",
+        ),
+        pytest.param("_ = 0j", id="complex"),
+    ]
+    # Read all test files from directory
+    + [
+        pytest.param(path.read_text(), id=path.stem)
+        for path in EXAMPLES_DIR.glob("*.py")
+    ]
+)
 
 
 @pytest.mark.parametrize("source", EXAMPLES)
@@ -96,7 +78,8 @@ def test_examples(source):
 
 def test_modules():
     # Instead of params, iterate in test so that:
-    # 1. the number of tests is consistant accross python versions pleasing xdist running multiple versions
+    # 1. the number of tests is consistant accross python versions
+    #    pleasing xdist running multiple versions
     # 2. pushing loading of all modules inside generator, so that fast samples run first
 
     # Keep a list of failures, so we can print the shortest at the end
@@ -111,7 +94,7 @@ def test_modules():
         ):
             try:
                 verify_code(code)
-            except Exception as e:
+            except Exception:
                 failures.append((name, source))
                 progress.console.print(f"[red]{name} failed")
 
@@ -119,8 +102,8 @@ def test_modules():
             # sort failures by length of source
             name, source = sorted(failures, key=lambda failure: len(failure[1]))[0]
             lines = source.splitlines()
-            # Try to do a simple minimization of the failure by removing lines from the end
-            # until it passes
+            # Try to do a simple minimization of the failure by removing lines
+            # from the end until it passes
             for i in progress.track(
                 list(reversed(range(1, len(lines)))),
                 description=f"3. Trimming end lines from {name}",
@@ -135,7 +118,7 @@ def test_modules():
                     try:
                         verify_code(code)
                     # If this fails, its the new minimal source
-                    except Exception as e:
+                    except Exception:
                         source = minimized_source
                     # Otherwise, if it passes, we trimmed too much, we are done
                     else:
@@ -155,15 +138,14 @@ def test_modules():
                     try:
                         verify_code(code)
                     # If this fails, its the new minimal source
-                    except Exception as e:
+                    except Exception:
                         source = minimized_source
                     # Otherwise, if it passes, we trimmed too much, we are done
                     else:
                         break
-            path = module_file(name)
+            path = EXAMPLES_DIR / f"{name}.py"
             path.write_text(source)
             progress.console.print(f"Wrote minimized source to {path}")
-            progress.console.print(f"Add example: module_param({repr(name)})")
             assert False
 
 
@@ -180,28 +162,6 @@ def test_generated(source_code):
         warnings.simplefilter("ignore")
         code = compile(source_code, "<string>", "exec")
     verify_code(code)
-
-
-def module_codes() -> Iterable[tuple[str, str, CodeType]]:
-    # In order to test the code_data, we try to get a sample of bytecode,
-    # by walking all our packages and trying to load every module.
-    # Note that although this doesn't require the code to be executable,
-    # `walk_packages` does require it, so this will ignore any modules
-    # which raise errors on import.
-
-    with warnings.catch_warnings():
-        # Ignore warning on find_module which will be deprecated in Python 3.12
-        # Worry about it later!
-        warnings.simplefilter("ignore")
-        for mi in pkgutil.walk_packages(onerror=lambda _name: None):
-            loader: Loader = mi.module_finder.find_module(mi.name)  # type: ignore
-            try:
-                code = loader.get_code(mi.name)  # type: ignore
-            except SyntaxError:
-                continue
-            if code:
-                source = loader.get_source(mi.name)  # type: ignore
-                yield mi.name, source, code
 
 
 def verify_code(code: CodeType) -> None:
@@ -271,10 +231,11 @@ def verify_line_mapping(code: CodeType):
     Verify the mapping type by testing each conversion layer and making sure they
     are isomorphic.
 
-    The tests are written in this way, so we can more easily which layer is causing the error.
+    The tests are written in this way, so we can more easily which layer is
+    causing the error.
     """
     # Include when we need to show locals
-    _dis = dis.Bytecode(code).dis()
+    # _dis = dis.Bytecode(code).dis()
     # print(_dis)
 
     b: bytes = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
@@ -341,9 +302,9 @@ def track_unknown_length(progress, iterable, description):
     Version of Rich's track which supports iterable's of unknown length.
     """
     t = progress.add_task(description, total=None)
-    l = []
+    list_ = []
     for x in iterable:
         progress.update(t, advance=1)
-        l.append(x)
+        list_.append(x)
 
-    return l
+    return list_
