@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from types import CodeType
-from typing import TYPE_CHECKING, FrozenSet, List, Optional, Set, Tuple, Type, Union
+from typing import FrozenSet, Optional, Tuple, Union
 
 # Only introduced in Python 3.10
 # https://github.com/python/cpython/pull/22336

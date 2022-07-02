@@ -20,7 +20,8 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
-    # First, iterate through bytes to make instructions while also making set of all the targets
+    # First, iterate through bytes to make instructions while also making set of all the
+    # targets
     # List of bytecode offsets and instructions
     offsets_and_instruction: list[tuple[int, Instruction]] = []
     # Set of all instruction offsets which are targets of jump blocks
@@ -108,7 +109,7 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                 else:
                     arg = instruction.arg
                     if isinstance(arg, Jump):
-                        # Otherwise use `1` as the arg_value, which will be updated later
+                        # Otherwise use 1 as the arg_value, which will be update later
                         arg_value = 1
                     else:
                         arg_value = arg
@@ -137,8 +138,9 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                         ) * multiplier
                     else:
                         new_arg_value = multiplier * target_instruction_offset
-                    # If we aren't overriding and the new size of instructions is not the same
-                    # as the old, mark this as updated, so we re-calculate block positions!
+                    # If we aren't overriding and the new size of instructions is not
+                    # the same as the old, mark this as updated, so we re-calculate
+                    # block positions!
                     if (
                         not instruction.n_args_override
                         and n_instructions != _instrsize(new_arg_value)
@@ -273,7 +275,7 @@ def _instrsize(arg: int) -> int:
     Minimum number of code units necessary to encode instruction with
     EXTENDED_ARGs
 
-    From https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L11-L20
+    From https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L11-L20 # noqa: E501
     """
     return 1 if arg <= 0xFF else 2 if arg <= 0xFFFF else 3 if arg <= 0xFFFFFF else 4
 
