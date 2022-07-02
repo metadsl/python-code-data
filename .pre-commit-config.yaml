@@ -35,6 +35,7 @@ repos:
             --annotation-style=line,
             "--extra=test,docs,dev",
             --allow-unsafe,
+            --pip-args="--no-cache-dir",
             pyproject.toml,
           ]
         additional_dependencies: [virtualenv]
@@ -45,6 +46,7 @@ repos:
             --annotation-style=line,
             --extra=docs,
             --allow-unsafe,
+            --pip-args="--no-cache-dir",
             --output-file=requirements.docs.txt,
             pyproject.toml,
           ]
@@ -56,6 +58,7 @@ repos:
             --annotation-style=line,
             --extra=test,
             --allow-unsafe,
+            --pip-args="--no-cache-dir",
             --output-file=requirements.test.txt,
             pyproject.toml,
           ]
