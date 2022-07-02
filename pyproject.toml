@@ -43,7 +43,8 @@ test = [
 
 docs = [
     "jupyter-book",
-    # "sphinx-panels"
+    # To preserve 3.7 support require older ipython
+    "ipython<8"
 ]
 
 [project.scripts]

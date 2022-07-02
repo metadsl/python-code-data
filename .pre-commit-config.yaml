@@ -30,5 +30,11 @@ repos:
     hooks:
       - id: pip-compile
         files: ^(pyproject\.toml|requirements\.txt)$
-        args: [--annotation-style=line, "--extra=test,docs,dev", pyproject.toml]
+        args:
+          [
+            --annotation-style=line,
+            "--extra=test,docs,dev",
+            --allow-unsafe,
+            pyproject.toml,
+          ]
 # TODO: #47 Add format toml precommit
