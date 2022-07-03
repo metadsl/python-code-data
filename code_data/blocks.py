@@ -30,21 +30,11 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
 
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
 
-        is_abs_jump = opcode in dis.hasjabs
-        is_rel_jump = opcode in dis.hasjrel
-
-        processed_arg: Arg
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
-        if is_abs_jump or is_rel_jump:
-            if is_abs_jump:
-                abs_jump_target = (2 if _ATLEAST_310 else 1) * arg
-
-            else:
-                abs_jump_target = next_offset + ((2 if _ATLEAST_310 else 1) * arg)
-
-            targets_set.add(abs_jump_target)
-            processed_arg = Jump(target=abs_jump_target, relative=not is_abs_jump)
+        processed_arg = to_arg(opcode, arg, next_offset)
+        if isinstance(processed_arg, Jump):
+            targets_set.add(processed_arg.target)
             # Store the number of args if this is a jump instruction
             # This is needed to preserve isomporphic behavior. Otherwise
             # there are cases where jump instructions could be different values
@@ -53,7 +43,6 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
             n_args_override = n_args
         else:
             processed_arg = arg
-            n_args_override = None
 
         instruction = Instruction(
             name=dis.opname[opcode],
@@ -107,12 +96,7 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                 if (block_index, instruction_index) in args:
                     arg_value = args[block_index, instruction_index]
                 else:
-                    arg = instruction.arg
-                    if isinstance(arg, Jump):
-                        # Otherwise use 1 as the arg_value, which will be update later
-                        arg_value = 1
-                    else:
-                        arg_value = arg
+                    arg_value = from_arg(instruction.arg)
                     args[block_index, instruction_index] = arg_value
                 n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
@@ -175,6 +159,21 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
     return bytes(bytes_), line_mapping
 
 
+def to_arg(opcode: int, arg: int, next_offset: int) -> Arg:
+    if opcode in dis.hasjabs:
+        return Jump((2 if _ATLEAST_310 else 1) * arg, False)
+    elif opcode in dis.hasjrel:
+        return Jump(next_offset + ((2 if _ATLEAST_310 else 1) * arg), True)
+    return arg
+
+
+def from_arg(arg: Arg) -> int:
+    # Use 1 as the arg_value, which will be update later
+    if isinstance(arg, Jump):
+        return 1
+    return arg
+
+
 def verify_block(blocks: Blocks) -> None:
     """
     Verify that the blocks are valid, by making sure every
@@ -221,6 +220,15 @@ class Jump(DataclassHideDefault):
     relative: bool = field(repr=False)
 
 
+@dataclass
+class Name(DataclassHideDefault):
+    """
+    A name argument.
+    """
+
+    name: str = field(metadata={"positional": True})
+
+
 # TODO: Add:
 # 1. constant lookup
 # 2. a name lookup
@@ -231,6 +239,8 @@ class Jump(DataclassHideDefault):
 # 8. Generator kind
 
 Arg = Union[int, Jump]
+
+
 # dict mapping block offset to list of instructions in the block
 Blocks = Dict[int, List[Instruction]]
 
