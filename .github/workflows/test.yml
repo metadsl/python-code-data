@@ -24,6 +24,14 @@ jobs:
       # TODO: #48 Only install test requirements instead of all pinned in CI
       - run: pip install -e . -r requirements.test.txt
       - run: pytest -v code_data
+      - name: Commit and push failing example
+        if: failure()
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add code_data/test_minimized/
+          git commit -m "Add failing example from testing on Python ${{ matrix.py}}"
+          git push
   # Just test building the docs on read the docs, not on github actions
   #   docs:
   #     name: docs build

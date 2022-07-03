@@ -16,7 +16,9 @@ from code_data.line_mapping import LineMapping
 from .dataclass_hide_default import DataclassHideDefault
 
 
-def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
+def bytes_to_blocks(
+    b: bytes, line_mapping: LineMapping, names: tuple[str, ...]
+) -> tuple[Blocks, dict[int, str]]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -28,23 +30,16 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
     # The targets always includes the first block
     targets_set = {0}
 
+    # For recording what names we have found to understand the order of the names
+    found_names: list[str] = []
+
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
 
-        is_abs_jump = opcode in dis.hasjabs
-        is_rel_jump = opcode in dis.hasjrel
-
-        processed_arg: Arg
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
-        if is_abs_jump or is_rel_jump:
-            if is_abs_jump:
-                abs_jump_target = (2 if _ATLEAST_310 else 1) * arg
-
-            else:
-                abs_jump_target = next_offset + ((2 if _ATLEAST_310 else 1) * arg)
-
-            targets_set.add(abs_jump_target)
-            processed_arg = Jump(target=abs_jump_target, relative=not is_abs_jump)
+        processed_arg = to_arg(opcode, arg, next_offset, names, found_names)
+        if isinstance(processed_arg, Jump):
+            targets_set.add(processed_arg.target)
             # Store the number of args if this is a jump instruction
             # This is needed to preserve isomporphic behavior. Otherwise
             # there are cases where jump instructions could be different values
@@ -52,7 +47,6 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
             # offset.
             n_args_override = n_args
         else:
-            processed_arg = arg
             n_args_override = None
 
         instruction = Instruction(
@@ -84,10 +78,15 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
             instruction.arg.target = targets.index(instruction.arg.target)
         block.append(instruction)
 
-    return {i: block for i, block in enumerate(blocks)}
+    additional_names = {
+        i: name for i, name in enumerate(names) if name not in found_names
+    }
+    return {i: block for i, block in enumerate(blocks)}, additional_names
 
 
-def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
+def blocks_to_bytes(
+    blocks: Blocks, additional_names: dict[int, str]
+) -> Tuple[bytes, LineMapping, tuple[str, ...]]:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -95,6 +94,11 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
 
     # Mapping of block index, instruction index, to integer arg values
     args: dict[tuple[int, int], int] = {}
+
+    # List of names we have collected from the instructions
+    names: list[str] = []
+    # Mapping of name index to final name positions
+    name_final_positions: dict[int, int] = {}
 
     # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
@@ -107,12 +111,7 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                 if (block_index, instruction_index) in args:
                     arg_value = args[block_index, instruction_index]
                 else:
-                    arg = instruction.arg
-                    if isinstance(arg, Jump):
-                        # Otherwise use 1 as the arg_value, which will be update later
-                        arg_value = 1
-                    else:
-                        arg_value = arg
+                    arg_value = from_arg(instruction.arg, names, name_final_positions)
                     args[block_index, instruction_index] = arg_value
                 n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
@@ -147,6 +146,15 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                     ):
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
+    # Add additional names to the names and add final positions
+    for i, name in additional_names.items():
+        names.append(name)
+        name_final_positions[i] = len(names) - 1
+
+    # Sort positions by final position
+    names = [
+        names[i] for _, i in sorted(name_final_positions.items(), key=lambda x: x[0])
+    ]
 
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
@@ -172,7 +180,42 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                 )
                 bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
-    return bytes(bytes_), line_mapping
+    return bytes(bytes_), line_mapping, tuple(names)
+
+
+def to_arg(
+    opcode: int,
+    arg: int,
+    next_offset: int,
+    names: tuple[str, ...],
+    found_names: list[str],
+) -> Arg:
+    if opcode in dis.hasjabs:
+        return Jump((2 if _ATLEAST_310 else 1) * arg, False)
+    elif opcode in dis.hasjrel:
+        return Jump(next_offset + ((2 if _ATLEAST_310 else 1) * arg), True)
+    elif opcode in dis.hasname:
+        name = names[arg]
+        # Check if its the proper position
+        if name not in found_names:
+            found_names.append(name)
+        wrong_position = found_names.index(name) != arg
+        return Name(name, arg if wrong_position else None)
+    return arg
+
+
+def from_arg(arg: Arg, names: list[str], name_final_positions: dict[int, int]) -> int:
+    # Use 1 as the arg_value, which will be update later
+    if isinstance(arg, Jump):
+        return 1
+    if isinstance(arg, Name):
+        if arg.name not in names:
+            names.append(arg.name)
+        index = names.index(arg.name)
+        final_index = index if arg.index_override is None else arg.index_override
+        name_final_positions[final_index] = index
+        return final_index
+    return arg
 
 
 def verify_block(blocks: Blocks) -> None:
@@ -221,6 +264,19 @@ class Jump(DataclassHideDefault):
     relative: bool = field(repr=False)
 
 
+@dataclass
+class Name(DataclassHideDefault):
+    """
+    A name argument.
+    """
+
+    name: str = field(metadata={"positional": True})
+
+    # Optional override for the position of the name, if it is not ordered by occurance
+    # in the code.
+    index_override: Optional[int] = field(default=None)
+
+
 # TODO: Add:
 # 1. constant lookup
 # 2. a name lookup
@@ -230,7 +286,9 @@ class Jump(DataclassHideDefault):
 # 7. format value
 # 8. Generator kind
 
-Arg = Union[int, Jump]
+Arg = Union[int, Jump, Name]
+
+
 # dict mapping block offset to list of instructions in the block
 Blocks = Dict[int, List[Instruction]]
 
