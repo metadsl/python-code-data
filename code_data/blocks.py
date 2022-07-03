@@ -30,11 +30,14 @@ def bytes_to_blocks(
     # The targets always includes the first block
     targets_set = {0}
 
+    # For recording what names we have found to understand the order of the names
+    found_names: list[str] = []
+
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
 
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
-        processed_arg = to_arg(opcode, arg, next_offset, names)
+        processed_arg = to_arg(opcode, arg, next_offset, names, found_names)
         if isinstance(processed_arg, Jump):
             targets_set.add(processed_arg.target)
             # Store the number of args if this is a jump instruction
@@ -89,6 +92,8 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]
 
     # List of names we have collected from the instructions
     names: list[str] = []
+    # name positions to swap at the end
+    swap_names: list[tuple[int, int]] = []
 
     # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
@@ -101,7 +106,7 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]
                 if (block_index, instruction_index) in args:
                     arg_value = args[block_index, instruction_index]
                 else:
-                    arg_value = from_arg(instruction.arg, names)
+                    arg_value = from_arg(instruction.arg, names, swap_names)
                     args[block_index, instruction_index] = arg_value
                 n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
@@ -137,6 +142,10 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
 
+    # Swap the names we need to
+    for i, j in swap_names:
+        names[i], names[j] = names[j], names[i]
+
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
@@ -164,24 +173,40 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]
     return bytes(bytes_), line_mapping, tuple(names)
 
 
-def to_arg(opcode: int, arg: int, next_offset: int, names: tuple[str, ...]) -> Arg:
+def to_arg(
+    opcode: int,
+    arg: int,
+    next_offset: int,
+    names: tuple[str, ...],
+    found_names: list[str],
+) -> Arg:
     if opcode in dis.hasjabs:
         return Jump((2 if _ATLEAST_310 else 1) * arg, False)
     elif opcode in dis.hasjrel:
         return Jump(next_offset + ((2 if _ATLEAST_310 else 1) * arg), True)
     elif opcode in dis.hasname:
-        return Name(names[arg])
+        name = names[arg]
+        # Check if its the proper position
+        if name not in found_names:
+            found_names.append(name)
+        wrong_position = found_names.index(name) != arg
+        return Name(name, arg if wrong_position else None)
     return arg
 
 
-def from_arg(arg: Arg, names: list[str]) -> int:
+def from_arg(arg: Arg, names: list[str], swap_names: list[tuple[int, int]]) -> int:
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
     if isinstance(arg, Name):
         if arg.name not in names:
             names.append(arg.name)
-        return names.index(arg.name)
+        index = names.index(arg.name)
+        index_override = arg.index_override
+        if index_override is None:
+            return index
+        swap_names.append((index, index_override))
+        return index_override
     return arg
 
 
@@ -238,6 +263,10 @@ class Name(DataclassHideDefault):
     """
 
     name: str = field(metadata={"positional": True})
+
+    # Optional override for the position of the name, if it is not ordered by occurance
+    # in the code.
+    index_override: Optional[int] = field(default=None)
 
 
 # TODO: Add:
