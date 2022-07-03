@@ -165,7 +165,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
             flags,
             code,
             consts,
-            code_data.names,
+            names,
             code_data.varnames,
             code_data.filename,
             code_data.name,
