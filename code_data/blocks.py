@@ -18,7 +18,7 @@ from .dataclass_hide_default import DataclassHideDefault
 
 def bytes_to_blocks(
     b: bytes, line_mapping: LineMapping, names: tuple[str, ...]
-) -> tuple[Blocks, tuple[str, ...]]:
+) -> tuple[Blocks, dict[int, str]]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -78,10 +78,15 @@ def bytes_to_blocks(
             instruction.arg.target = targets.index(instruction.arg.target)
         block.append(instruction)
 
-    return {i: block for i, block in enumerate(blocks)}, names[len(found_names) :]
+    additional_names = {
+        i: name for i, name in enumerate(names) if name not in found_names
+    }
+    return {i: block for i, block in enumerate(blocks)}, additional_names
 
 
-def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]]:
+def blocks_to_bytes(
+    blocks: Blocks, additional_names: dict[int, str]
+) -> Tuple[bytes, LineMapping, tuple[str, ...]]:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -141,6 +146,11 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]
                     ):
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
+    # Add additional names to the names and add final positions
+    for i, name in additional_names.items():
+        names.append(name)
+        name_final_positions[i] = len(names) - 1
+
     # Sort positions by final position
     names = [
         names[i] for _, i in sorted(name_final_positions.items(), key=lambda x: x[0])

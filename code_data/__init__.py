@@ -48,8 +48,9 @@ class CodeData(DataclassHideDefault):
     # the first line number in the line table.
     first_line_number_override: Optional[int] = field(default=None)
 
-    # Additional names to include, which do not appear in any instructions
-    additional_names: tuple[str, ...] = field(default=())
+    # Additional names to include, which do not appear in any instructions,
+    # Mapping of index in the names list to the name
+    additional_names: dict[int, str] = field(default_factory=dict)
 
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
@@ -135,8 +136,9 @@ def from_code_data(code_data: CodeData) -> CodeType:
     """
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
-    code, line_mapping, names = blocks_to_bytes(code_data.blocks)
-    names += code_data.additional_names
+    code, line_mapping, names = blocks_to_bytes(
+        code_data.blocks, code_data.additional_names
+    )
 
     line_mapping.update(code_data.additional_line_mapping)
     first_line_no = line_mapping.trim_first_line(code_data.first_line_number_override)
