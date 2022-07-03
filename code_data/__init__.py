@@ -219,10 +219,10 @@ def from_code_constant(value: ConstantDataType) -> object:
 
 
 @dataclass(frozen=True)
-class ConstantTuple:
+class ConstantTuple(DataclassHideDefault):
     tuple: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})
 
 
 @dataclass(frozen=True)
-class ConstantSet:
+class ConstantSet(DataclassHideDefault):
     frozenset: FrozenSet[ConstantDataType] = field(metadata={"positional": True})
