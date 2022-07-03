@@ -18,7 +18,7 @@ from .dataclass_hide_default import DataclassHideDefault
 
 def bytes_to_blocks(
     b: bytes, line_mapping: LineMapping, names: tuple[str, ...]
-) -> Blocks:
+) -> tuple[Blocks, tuple[str, ...]]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -78,7 +78,7 @@ def bytes_to_blocks(
             instruction.arg.target = targets.index(instruction.arg.target)
         block.append(instruction)
 
-    return {i: block for i, block in enumerate(blocks)}
+    return {i: block for i, block in enumerate(blocks)}, names[len(found_names) :]
 
 
 def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]]:
