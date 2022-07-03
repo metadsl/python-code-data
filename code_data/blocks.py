@@ -16,7 +16,9 @@ from code_data.line_mapping import LineMapping
 from .dataclass_hide_default import DataclassHideDefault
 
 
-def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
+def bytes_to_blocks(
+    b: bytes, line_mapping: LineMapping, names: tuple[str, ...]
+) -> Blocks:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -32,7 +34,7 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
 
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
-        processed_arg = to_arg(opcode, arg, next_offset)
+        processed_arg = to_arg(opcode, arg, next_offset, names)
         if isinstance(processed_arg, Jump):
             targets_set.add(processed_arg.target)
             # Store the number of args if this is a jump instruction
@@ -42,7 +44,7 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
             # offset.
             n_args_override = n_args
         else:
-            processed_arg = arg
+            n_args_override = None
 
         instruction = Instruction(
             name=dis.opname[opcode],
@@ -76,7 +78,7 @@ def bytes_to_blocks(b: bytes, line_mapping: LineMapping) -> Blocks:
     return {i: block for i, block in enumerate(blocks)}
 
 
-def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
+def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping, tuple[str, ...]]:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -84,6 +86,9 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
 
     # Mapping of block index, instruction index, to integer arg values
     args: dict[tuple[int, int], int] = {}
+
+    # List of names we have collected from the instructions
+    names: list[str] = []
 
     # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
@@ -96,7 +101,7 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                 if (block_index, instruction_index) in args:
                     arg_value = args[block_index, instruction_index]
                 else:
-                    arg_value = from_arg(instruction.arg)
+                    arg_value = from_arg(instruction.arg, names)
                     args[block_index, instruction_index] = arg_value
                 n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
@@ -156,21 +161,27 @@ def blocks_to_bytes(blocks: Blocks) -> Tuple[bytes, LineMapping]:
                 )
                 bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
-    return bytes(bytes_), line_mapping
+    return bytes(bytes_), line_mapping, tuple(names)
 
 
-def to_arg(opcode: int, arg: int, next_offset: int) -> Arg:
+def to_arg(opcode: int, arg: int, next_offset: int, names: tuple[str, ...]) -> Arg:
     if opcode in dis.hasjabs:
         return Jump((2 if _ATLEAST_310 else 1) * arg, False)
     elif opcode in dis.hasjrel:
         return Jump(next_offset + ((2 if _ATLEAST_310 else 1) * arg), True)
+    elif opcode in dis.hasname:
+        return Name(names[arg])
     return arg
 
 
-def from_arg(arg: Arg) -> int:
+def from_arg(arg: Arg, names: list[str]) -> int:
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
+    if isinstance(arg, Name):
+        if arg.name not in names:
+            names.append(arg.name)
+        return names.index(arg.name)
     return arg
 
 
@@ -238,7 +249,7 @@ class Name(DataclassHideDefault):
 # 7. format value
 # 8. Generator kind
 
-Arg = Union[int, Jump]
+Arg = Union[int, Jump, Name]
 
 
 # dict mapping block offset to list of instructions in the block

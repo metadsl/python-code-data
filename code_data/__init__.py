@@ -69,9 +69,6 @@ class CodeData(DataclassHideDefault):
     # All code objects are recursively transformed to CodeData objects
     consts: Tuple["ConstantDataType", ...] = field(default=(None,))
 
-    # tuple of names of local variables
-    names: Tuple[str, ...] = field(default=tuple())
-
     # tuple of names of arguments and local variables
     varnames: Tuple[str, ...] = field(default=tuple())
 
@@ -104,7 +101,7 @@ def to_code_data(code: CodeType) -> CodeData:
     line_mapping = to_line_mapping(code)
     first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
     # retrieve the blocks and pop off used line mapping
-    blocks = bytes_to_blocks(code.co_code, line_mapping)
+    blocks = bytes_to_blocks(code.co_code, line_mapping, code.co_names)
     return CodeData(
         blocks,
         line_mapping,
@@ -116,7 +113,6 @@ def to_code_data(code: CodeType) -> CodeData:
         code.co_stacksize,
         to_flags_data(code.co_flags),
         tuple(map(to_code_constant, code.co_consts)),
-        code.co_names,
         code.co_varnames,
         code.co_filename,
         code.co_name,
@@ -133,7 +129,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
     """
     consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
-    code, line_mapping = blocks_to_bytes(code_data.blocks)
+    code, line_mapping, names = blocks_to_bytes(code_data.blocks)
 
     line_mapping.update(code_data.additional_line_mapping)
     first_line_no = line_mapping.trim_first_line(code_data.first_line_number_override)
@@ -151,7 +147,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
             flags,
             code,
             consts,
-            code_data.names,
+            names,
             code_data.varnames,
             code_data.filename,
             code_data.name,
