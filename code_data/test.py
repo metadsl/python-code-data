@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import dis
 import pathlib
 import sys
@@ -202,14 +203,7 @@ def code_to_primitives(code: CodeType, verify_line_mappings: bool) -> dict[str, 
         verify_line_mapping(code)
     return {
         name: (
-            # Recursively transform constants
-            tuple(
-                code_to_primitives(a, verify_line_mappings)
-                if isinstance(a, CodeType)
-                else a
-                for a in getattr(code, name)
-            )
-            # Compare code with instructions for easier diff
+            consts_to_primitives(code.co_consts, verify_line_mappings)
             if name == "co_consts"
             else [(i.opname, i.argval) for i in _get_instructions_bytes(code.co_code)]
             if name == "co_code"
@@ -217,6 +211,28 @@ def code_to_primitives(code: CodeType, verify_line_mappings: bool) -> dict[str, 
         )
         for name in code_attributes
     }
+
+
+_PyCode_ConstantKey = ctypes.pythonapi._PyCode_ConstantKey
+_PyCode_ConstantKey.restype = ctypes.py_object
+
+
+def consts_to_primitives(
+    consts: tuple[object, ...], verify_line_mappings: bool
+) -> tuple[object, ...]:
+    """
+    Transforms code constants into primitives which are easier to see the diff
+    of for comparison.
+    """
+
+    consts = tuple(
+        code_to_primitives(a, verify_line_mappings) if isinstance(a, CodeType)
+        # If we have some other constant, use the same function the code object uses
+        # to differentiate based on the type.
+        else _PyCode_ConstantKey(ctypes.py_object(a))
+        for a in consts
+    )
+    return consts
 
 
 def code_to_dict(code: CodeType) -> dict[str, object]:

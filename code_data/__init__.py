@@ -52,6 +52,10 @@ class CodeData(DataclassHideDefault):
     # Mapping of index in the names list to the name
     additional_names: dict[int, str] = field(default_factory=dict)
 
+    # Additional constants to include, which do not appear in any instructions,
+    # Mapping of index in the names list to the name
+    additional_constants: dict[int, ConstantDataType] = field(default_factory=dict)
+
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
 
@@ -69,9 +73,6 @@ class CodeData(DataclassHideDefault):
 
     # code flags
     flags: FlagsData = field(default_factory=set)
-
-    # All code objects are recursively transformed to CodeData objects
-    consts: Tuple["ConstantDataType", ...] = field(default=(None,))
 
     # tuple of names of arguments and local variables
     varnames: Tuple[str, ...] = field(default=tuple())
@@ -104,22 +105,24 @@ def to_code_data(code: CodeType) -> CodeData:
 
     line_mapping = to_line_mapping(code)
     first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
+
+    constants = tuple(map(to_code_constant, code.co_consts))
     # retrieve the blocks and pop off used line mapping
-    blocks, additional_names = bytes_to_blocks(
-        code.co_code, line_mapping, code.co_names
+    blocks, additional_names, additional_constants = bytes_to_blocks(
+        code.co_code, line_mapping, code.co_names, constants
     )
     return CodeData(
         blocks,
         line_mapping,
         first_line_number_override,
         additional_names,
+        additional_constants,
         code.co_argcount,
         posonlyargcount,
         code.co_kwonlyargcount,
         code.co_nlocals,
         code.co_stacksize,
         to_flags_data(code.co_flags),
-        tuple(map(to_code_constant, code.co_consts)),
         code.co_varnames,
         code.co_filename,
         code.co_name,
@@ -134,11 +137,12 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
     :rtype: types.CodeType
     """
-    consts = tuple(map(from_code_constant, code_data.consts))
     flags = from_flags_data(code_data.flags)
-    code, line_mapping, names = blocks_to_bytes(
-        code_data.blocks, code_data.additional_names
+    code, line_mapping, names, constants = blocks_to_bytes(
+        code_data.blocks, code_data.additional_names, code_data.additional_constants
     )
+
+    consts = tuple(map(from_code_constant, constants))
 
     line_mapping.update(code_data.additional_line_mapping)
     first_line_no = line_mapping.trim_first_line(code_data.first_line_number_override)
@@ -185,15 +189,12 @@ def from_code_data(code_data: CodeData) -> CodeType:
         )
 
 
-# We need to wrap the data structures in dataclasses to be able to represent
-# them with MyPy, since it doesn't support recursive types
-# https://github.com/python/mypy/issues/731
 ConstantDataType = Union[
-    int,
+    "ConstantInt",
     str,
-    float,
+    "ConstantFloat",
     None,
-    bool,
+    "ConstantBool",
     bytes,
     "EllipsisType",
     CodeData,
@@ -206,10 +207,14 @@ ConstantDataType = Union[
 def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, CodeType):
         return to_code_data(value)
-    if isinstance(
-        value, (int, str, float, type(None), bool, bytes, type(...), complex)
-    ):
+    if isinstance(value, (str, type(None), bytes, type(...), complex)):
         return value
+    if isinstance(value, bool):
+        return ConstantBool(value)
+    if isinstance(value, int):
+        return ConstantInt(value)
+    if isinstance(value, float):
+        return ConstantFloat(value)
     if isinstance(value, tuple):
         return ConstantTuple(tuple(map(to_code_constant, value)))
     if isinstance(value, frozenset):
@@ -224,9 +229,33 @@ def from_code_constant(value: ConstantDataType) -> object:
         return tuple(map(from_code_constant, value.tuple))
     if isinstance(value, ConstantSet):
         return frozenset(map(from_code_constant, value.frozenset))
+    if isinstance(value, (ConstantBool, ConstantInt, ConstantFloat)):
+        return value.value
     return value
 
 
+# Wrap these in types, so that, say, bytecode with constants of 1
+# are not equal to bytecodes of constants of True.
+
+
+@dataclass(frozen=True)
+class ConstantBool:
+    value: bool = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class ConstantInt:
+    value: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class ConstantFloat:
+    value: float = field(metadata={"positional": True})
+
+
+# We need to wrap the data structures in dataclasses to be able to represent
+# them with MyPy, since it doesn't support recursive types
+# https://github.com/python/mypy/issues/731
 @dataclass(frozen=True)
 class ConstantTuple(DataclassHideDefault):
     tuple: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})

@@ -9,16 +9,22 @@ import ctypes
 import dis
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
 
 from code_data.line_mapping import LineMapping
 
 from .dataclass_hide_default import DataclassHideDefault
 
+if TYPE_CHECKING:
+    from . import ConstantDataType
+
 
 def bytes_to_blocks(
-    b: bytes, line_mapping: LineMapping, names: tuple[str, ...]
-) -> tuple[Blocks, dict[int, str]]:
+    b: bytes,
+    line_mapping: LineMapping,
+    names: tuple[str, ...],
+    constants: tuple[ConstantDataType, ...],
+) -> tuple[Blocks, dict[int, str], dict[int, ConstantDataType]]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -33,11 +39,17 @@ def bytes_to_blocks(
     # For recording what names we have found to understand the order of the names
     found_names: list[str] = []
 
+    # For recording what constants we have found to understand the order of the
+    # constants
+    found_constants: list[ConstantDataType] = []
+
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
 
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
-        processed_arg = to_arg(opcode, arg, next_offset, names, found_names)
+        processed_arg = to_arg(
+            opcode, arg, next_offset, names, found_names, constants, found_constants
+        )
         if isinstance(processed_arg, Jump):
             targets_set.add(processed_arg.target)
             # Store the number of args if this is a jump instruction
@@ -81,12 +93,23 @@ def bytes_to_blocks(
     additional_names = {
         i: name for i, name in enumerate(names) if name not in found_names
     }
-    return {i: block for i, block in enumerate(blocks)}, additional_names
+    additional_constants = {
+        i: constant
+        for i, constant in enumerate(constants)
+        if constant not in found_constants
+    }
+    return (
+        {i: block for i, block in enumerate(blocks)},
+        additional_names,
+        additional_constants,
+    )
 
 
 def blocks_to_bytes(
-    blocks: Blocks, additional_names: dict[int, str]
-) -> Tuple[bytes, LineMapping, tuple[str, ...]]:
+    blocks: Blocks,
+    additional_names: dict[int, str],
+    additional_consts: dict[int, ConstantDataType],
+) -> Tuple[bytes, LineMapping, tuple[str, ...], tuple[ConstantDataType, ...]]:
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -100,6 +123,11 @@ def blocks_to_bytes(
     # Mapping of name index to final name positions
     name_final_positions: dict[int, int] = {}
 
+    # List of constants we have collected from the instructions
+    constants: list[ConstantDataType] = []
+    # Mapping of constant index to constant name positions
+    constant_final_positions: dict[int, int] = {}
+
     # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
 
@@ -111,7 +139,13 @@ def blocks_to_bytes(
                 if (block_index, instruction_index) in args:
                     arg_value = args[block_index, instruction_index]
                 else:
-                    arg_value = from_arg(instruction.arg, names, name_final_positions)
+                    arg_value = from_arg(
+                        instruction.arg,
+                        names,
+                        name_final_positions,
+                        constants,
+                        constant_final_positions,
+                    )
                     args[block_index, instruction_index] = arg_value
                 n_instructions = instruction.n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
@@ -156,6 +190,17 @@ def blocks_to_bytes(
         names[i] for _, i in sorted(name_final_positions.items(), key=lambda x: x[0])
     ]
 
+    # Add additional consts to the constants and add final positions
+    for i, constant in additional_consts.items():
+        constants.append(constant)
+        constant_final_positions[i] = len(constants) - 1
+
+    # Sort positions by final position
+    constants = [
+        constants[i]
+        for _, i in sorted(constant_final_positions.items(), key=lambda x: x[0])
+    ]
+
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
@@ -180,7 +225,7 @@ def blocks_to_bytes(
                 )
                 bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
-    return bytes(bytes_), line_mapping, tuple(names)
+    return bytes(bytes_), line_mapping, tuple(names), tuple(constants)
 
 
 def to_arg(
@@ -189,6 +234,8 @@ def to_arg(
     next_offset: int,
     names: tuple[str, ...],
     found_names: list[str],
+    consts: tuple[ConstantDataType, ...],
+    found_constants: list[ConstantDataType],
 ) -> Arg:
     if opcode in dis.hasjabs:
         return Jump((2 if _ATLEAST_310 else 1) * arg, False)
@@ -201,10 +248,22 @@ def to_arg(
             found_names.append(name)
         wrong_position = found_names.index(name) != arg
         return Name(name, arg if wrong_position else None)
+    elif opcode in dis.hasconst:
+        constant = consts[arg]
+        if constant not in found_constants:
+            found_constants.append(constant)
+        wrong_position = found_constants.index(constant) != arg
+        return Constant(constant, arg if wrong_position else None)
     return arg
 
 
-def from_arg(arg: Arg, names: list[str], name_final_positions: dict[int, int]) -> int:
+def from_arg(
+    arg: Arg,
+    names: list[str],
+    name_final_positions: dict[int, int],
+    constants: list[ConstantDataType],
+    constants_final_positions: dict[int, int],
+) -> int:
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
@@ -214,6 +273,13 @@ def from_arg(arg: Arg, names: list[str], name_final_positions: dict[int, int]) -
         index = names.index(arg.name)
         final_index = index if arg.index_override is None else arg.index_override
         name_final_positions[final_index] = index
+        return final_index
+    if isinstance(arg, Constant):
+        if arg.value not in constants:
+            constants.append(arg.value)
+        index = constants.index(arg.value)
+        final_index = index if arg.index_override is None else arg.index_override
+        constants_final_positions[final_index] = index
         return final_index
     return arg
 
@@ -277,16 +343,25 @@ class Name(DataclassHideDefault):
     index_override: Optional[int] = field(default=None)
 
 
+@dataclass
+class Constant(DataclassHideDefault):
+    """
+    A constant argument.
+    """
+
+    value: ConstantDataType = field(metadata={"positional": True})
+    # Optional override for the position if it is not ordered by occurance in the code.
+    index_override: Optional[int] = field(default=None)
+
+
 # TODO: Add:
-# 1. constant lookup
-# 2. a name lookup
 # 3. a local lookup
 # 5. An unused value
 # 6. Comparison lookup
 # 7. format value
 # 8. Generator kind
 
-Arg = Union[int, Jump, Name]
+Arg = Union[int, Jump, Name, Constant]
 
 
 # dict mapping block offset to list of instructions in the block
@@ -344,3 +419,16 @@ _c_int_bit_size = ctypes.sizeof(ctypes.c_int()) * 8
 _c_int_upper_limit = (2 ** (_c_int_bit_size - 1)) - 1
 # The number of values that can be stored in a signed int
 _c_int_length = 2**_c_int_bit_size
+
+
+# _PyCode_ConstantKey = ctypes.pythonapi._PyCode_ConstantKey
+# _PyCode_ConstantKey.restype = ctypes.py_object
+
+
+# def code_constant_key(value: object) -> object:
+#     """
+#     Transforms a value with the _ConstantKey function used in the Code type
+#     to compare equality of constants. It transforms objects so that the constant `1`
+#     is not equal to `True` for example, by adding their types.
+#     """
+#     return _PyCode_ConstantKey(ctypes.py_object(value))
