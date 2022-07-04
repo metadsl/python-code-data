@@ -214,7 +214,7 @@ def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, int):
         return ConstantInt(value)
     if isinstance(value, float):
-        return ConstantFloat(value)
+        return ConstantFloat(value, is_neg_zero=str(value) == "-0.0")
     if isinstance(value, tuple):
         return ConstantTuple(tuple(map(to_code_constant, value)))
     if isinstance(value, frozenset):
@@ -226,9 +226,9 @@ def from_code_constant(value: ConstantDataType) -> object:
     if isinstance(value, CodeData):
         return from_code_data(value)
     if isinstance(value, ConstantTuple):
-        return tuple(map(from_code_constant, value.tuple))
+        return tuple(map(from_code_constant, value.value))
     if isinstance(value, ConstantSet):
-        return frozenset(map(from_code_constant, value.frozenset))
+        return frozenset(map(from_code_constant, value.value))
     if isinstance(value, (ConstantBool, ConstantInt, ConstantFloat)):
         return value.value
     return value
@@ -251,6 +251,8 @@ class ConstantInt:
 @dataclass(frozen=True)
 class ConstantFloat:
     value: float = field(metadata={"positional": True})
+    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
+    is_neg_zero: bool = field(default=False)
 
 
 # We need to wrap the data structures in dataclasses to be able to represent
@@ -258,9 +260,9 @@ class ConstantFloat:
 # https://github.com/python/mypy/issues/731
 @dataclass(frozen=True)
 class ConstantTuple(DataclassHideDefault):
-    tuple: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})
+    value: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})
 
 
 @dataclass(frozen=True)
 class ConstantSet(DataclassHideDefault):
-    frozenset: FrozenSet[ConstantDataType] = field(metadata={"positional": True})
+    value: FrozenSet[ConstantDataType] = field(metadata={"positional": True})
