@@ -419,16 +419,3 @@ _c_int_bit_size = ctypes.sizeof(ctypes.c_int()) * 8
 _c_int_upper_limit = (2 ** (_c_int_bit_size - 1)) - 1
 # The number of values that can be stored in a signed int
 _c_int_length = 2**_c_int_bit_size
-
-
-# _PyCode_ConstantKey = ctypes.pythonapi._PyCode_ConstantKey
-# _PyCode_ConstantKey.restype = ctypes.py_object
-
-
-# def code_constant_key(value: object) -> object:
-#     """
-#     Transforms a value with the _ConstantKey function used in the Code type
-#     to compare equality of constants. It transforms objects so that the constant `1`
-#     is not equal to `True` for example, by adding their types.
-#     """
-#     return _PyCode_ConstantKey(ctypes.py_object(value))
