@@ -11,12 +11,11 @@ import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
 
-from code_data.line_mapping import LineMapping
-
 from .dataclass_hide_default import DataclassHideDefault
+from .line_mapping import LineMapping
 
 if TYPE_CHECKING:
-    from . import ConstantDataType
+    from . import BlockType, ConstantDataType
 
 
 def bytes_to_blocks(
@@ -24,10 +23,13 @@ def bytes_to_blocks(
     line_mapping: LineMapping,
     names: tuple[str, ...],
     constants: tuple[ConstantDataType, ...],
+    block_type: BlockType,
 ) -> tuple[Blocks, dict[int, str], dict[int, ConstantDataType]]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
+    from . import FunctionBlock
+
     # First, iterate through bytes to make instructions while also making set of all the
     # targets
     # List of bytecode offsets and instructions
@@ -42,13 +44,30 @@ def bytes_to_blocks(
     # For recording what constants we have found to understand the order of the
     # constants
     found_constants: list[ConstantDataType] = []
+    # Keep a set of the constant indices we have found, so we can check this against
+    # our initial constants at the end to see which we still have to add
+    # We should do the same with names, but checking against found_names works
+    # fine as long as names aren't duplicated, which they don't seem to be in the
+    # same way as constants
+    found_constant_indices: set[int] = set()
+    # If we have a function block, the first constant is the docstring.
+    if isinstance(block_type, FunctionBlock) and block_type.docstring_in_consts:
+        found_constants.append(block_type.docstring)
+        found_constant_indices.add(0)
 
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
 
         # Compute the jump targets, initially with just the byte offset
         # Once we know all the block targets, we will transform to be block offsets
         processed_arg = to_arg(
-            opcode, arg, next_offset, names, found_names, constants, found_constants
+            opcode,
+            arg,
+            next_offset,
+            names,
+            found_names,
+            constants,
+            found_constants,
+            found_constant_indices,
         )
         if isinstance(processed_arg, Jump):
             targets_set.add(processed_arg.target)
@@ -96,7 +115,7 @@ def bytes_to_blocks(
     additional_constants = {
         i: constant
         for i, constant in enumerate(constants)
-        if constant not in found_constants
+        if i not in found_constant_indices
     }
     return (
         {i: block for i, block in enumerate(blocks)},
@@ -109,7 +128,10 @@ def blocks_to_bytes(
     blocks: Blocks,
     additional_names: dict[int, str],
     additional_consts: dict[int, ConstantDataType],
+    block_type: BlockType,
 ) -> Tuple[bytes, LineMapping, tuple[str, ...], tuple[ConstantDataType, ...]]:
+    from . import FunctionBlock
+
     # First compute mapping from block to offset
     changed_instruction_lengths = True
     # So that we know the bytecode offsets for jumps when iterating though instructions
@@ -120,6 +142,7 @@ def blocks_to_bytes(
 
     # List of names we have collected from the instructions
     names: list[str] = []
+
     # Mapping of name index to final name positions
     name_final_positions: dict[int, int] = {}
 
@@ -127,6 +150,11 @@ def blocks_to_bytes(
     constants: list[ConstantDataType] = []
     # Mapping of constant index to constant name positions
     constant_final_positions: dict[int, int] = {}
+
+    # If it is a function block, we start with the docstring
+    if isinstance(block_type, FunctionBlock) and block_type.docstring_in_consts:
+        constants.append(block_type.docstring)
+        constant_final_positions[0] = 0
 
     # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
@@ -236,6 +264,7 @@ def to_arg(
     found_names: list[str],
     consts: tuple[ConstantDataType, ...],
     found_constants: list[ConstantDataType],
+    found_constant_indices: set[int],
 ) -> Arg:
     if opcode in dis.hasjabs:
         return Jump((2 if _ATLEAST_310 else 1) * arg, False)
@@ -249,6 +278,7 @@ def to_arg(
         wrong_position = found_names.index(name) != arg
         return Name(name, arg if wrong_position else None)
     elif opcode in dis.hasconst:
+        found_constant_indices.add(arg)
         constant = consts[arg]
         if constant not in found_constants:
             found_constants.append(constant)

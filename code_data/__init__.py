@@ -56,6 +56,9 @@ class CodeData(DataclassHideDefault):
     # Mapping of index in the names list to the name
     additional_constants: dict[int, ConstantDataType] = field(default_factory=dict)
 
+    # The type of block this is
+    type: BlockType = field(default=None)
+
     # number of arguments (not including keyword only arguments, * or ** args)
     argcount: int = field(default=0)
 
@@ -92,6 +95,11 @@ class CodeData(DataclassHideDefault):
         verify_block(self.blocks)
 
 
+# Functions should have both of these flags set
+# https://github.com/python/cpython/blob/443370d8acd107da235d2e9758e06ab3583be4ea/Python/compile.c#L5348
+FN_FLAGS = {"NEWLOCALS", "OPTIMIZED"}
+
+
 def to_code_data(code: CodeType) -> CodeData:
     """
     Parse a CodeType into python data structure.
@@ -107,9 +115,31 @@ def to_code_data(code: CodeType) -> CodeData:
     first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
 
     constants = tuple(map(to_code_constant, code.co_consts))
+
+    flag_data = to_flags_data(code.co_flags)
+
+    fn_flags = flag_data & FN_FLAGS
+    if len(fn_flags) == 0:
+        block_type = None
+    elif len(fn_flags) == 2:
+        # Use the first const as a docstring if its a string
+        # https://github.com/python/cpython/blob/da8be157f4e275c4c32b9199f1466ed7e52f62cf/Objects/funcobject.c#L33-L38
+        # TODO: Maybe just assume that first arg is not docstring if it's none? Naw...
+        docstring_in_consts = False
+        docstring: Optional[str] = None
+        if constants:
+            first_constant = constants[0]
+            if isinstance(first_constant, str) or first_constant is None:
+                docstring_in_consts = True
+                docstring = first_constant
+        block_type = FunctionBlock(docstring, docstring_in_consts)
+        flag_data -= FN_FLAGS
+    else:
+        raise ValueError(f"Expected both flags to represent function: {fn_flags}")
+
     # retrieve the blocks and pop off used line mapping
     blocks, additional_names, additional_constants = bytes_to_blocks(
-        code.co_code, line_mapping, code.co_names, constants
+        code.co_code, line_mapping, code.co_names, constants, block_type
     )
     return CodeData(
         blocks,
@@ -117,12 +147,13 @@ def to_code_data(code: CodeType) -> CodeData:
         first_line_number_override,
         additional_names,
         additional_constants,
+        block_type,
         code.co_argcount,
         posonlyargcount,
         code.co_kwonlyargcount,
         code.co_nlocals,
         code.co_stacksize,
-        to_flags_data(code.co_flags),
+        flag_data,
         code.co_varnames,
         code.co_filename,
         code.co_name,
@@ -137,9 +168,15 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
     :rtype: types.CodeType
     """
-    flags = from_flags_data(code_data.flags)
+    flags_data = code_data.flags
+    if isinstance(code_data.type, FunctionBlock):
+        flags_data = FN_FLAGS | flags_data
+    flags = from_flags_data(flags_data)
     code, line_mapping, names, constants = blocks_to_bytes(
-        code_data.blocks, code_data.additional_names, code_data.additional_constants
+        code_data.blocks,
+        code_data.additional_names,
+        code_data.additional_constants,
+        code_data.type,
     )
 
     consts = tuple(map(from_code_constant, constants))
@@ -187,6 +224,19 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.freevars,
             code_data.cellvars,
         )
+
+
+# The type of block this is, as we can infer from the flags.
+# https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
+BlockType = Union["FunctionBlock", None]
+
+
+@dataclass
+class FunctionBlock(DataclassHideDefault):
+    docstring: Optional[str] = field(default=None)
+    # Set to false if the docstring is not saved as a constant. In this case, it
+    # must be 0. This happens for list comprehensions
+    docstring_in_consts: bool = field(default=True)
 
 
 ConstantDataType = Union[
@@ -241,24 +291,24 @@ def from_code_constant(value: ConstantDataType) -> object:
 
 
 @dataclass(frozen=True)
-class ConstantBool:
+class ConstantBool(DataclassHideDefault):
     value: bool = field(metadata={"positional": True})
 
 
 @dataclass(frozen=True)
-class ConstantInt:
+class ConstantInt(DataclassHideDefault):
     value: int = field(metadata={"positional": True})
 
 
 @dataclass(frozen=True)
-class ConstantFloat:
+class ConstantFloat(DataclassHideDefault):
     value: float = field(metadata={"positional": True})
     # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
     is_neg_zero: bool = field(default=False)
 
 
 @dataclass(frozen=True)
-class ConstantComplex:
+class ConstantComplex(DataclassHideDefault):
     value: complex = field(metadata={"positional": True})
     # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
     real_is_neg_zero: bool = field(default=False)
@@ -270,7 +320,9 @@ class ConstantComplex:
 # https://github.com/python/mypy/issues/731
 @dataclass(frozen=True)
 class ConstantTuple(DataclassHideDefault):
-    value: Tuple[ConstantDataType, ...] = field(metadata={"positional": True})
+    # Make not positional until rich supports positional tuples
+    # https://github.com/Textualize/rich/pull/2379
+    value: tuple[ConstantDataType, ...] = field(metadata={"positional": False})
 
 
 @dataclass(frozen=True)

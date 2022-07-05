@@ -1,4 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import MISSING, fields
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import rich
 
 
 class DataclassHideDefault:
@@ -14,13 +20,13 @@ class DataclassHideDefault:
     https://rich.readthedocs.io/en/stable/pretty.html
     """
 
-    def __rich_repr__(self):
+    def __rich_repr__(self) -> rich.repr.Result:
         for f in fields(self):
             if not f.repr:
                 continue
-            if f.default_factory is not MISSING:  # type: ignore
+            if f.default_factory != MISSING:  # type: ignore
                 default = f.default_factory()
-            elif f.default is not MISSING:
+            elif f.default != MISSING:
                 default = f.default
             else:
                 default = object()
