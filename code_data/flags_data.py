@@ -19,7 +19,6 @@ FlagsData = Set[str]
 def to_flags_data(flags: int) -> FlagsData:
     flags_data: FlagsData = set()
     if not flags:
-        # Don't iterate if no flags are set
         return flags_data
     # Iterate through all flags, raising an exception if we hit any unknown ones
     for f in enum._decompose(_CodeFlag, flags)[0]:  # type: ignore
