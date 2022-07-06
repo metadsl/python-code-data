@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import dis
 import pathlib
 import sys
@@ -116,7 +117,7 @@ def test_modules():
                     continue
                 else:
                     try:
-                        verify_code(code)
+                        verify_code(code, debug=False)
                     # If this fails, its the new minimal source
                     except Exception:
                         source = minimized_source
@@ -136,7 +137,7 @@ def test_modules():
                     continue
                 else:
                     try:
-                        verify_code(code)
+                        verify_code(code, debug=False)
                     # If this fails, its the new minimal source
                     except Exception:
                         source = minimized_source
@@ -146,14 +147,15 @@ def test_modules():
             path = EXAMPLES_DIR / f"{name}.py"
             path.write_text(source)
             progress.console.print(f"Wrote minimized source to {path}")
-            assert False
+            code = compile(source, str(path), "exec")
+            verify_code(code)
 
 
 @given(source_code=hypothesmith.from_node())
 @settings(
     suppress_health_check=(HealthCheck.filter_too_much, HealthCheck.too_slow),
     deadline=timedelta(
-        milliseconds=1000
+        milliseconds=2000
     ),  # increase deadline to account for slow times in CI
 )
 def test_generated(source_code):
@@ -164,18 +166,36 @@ def test_generated(source_code):
     verify_code(code)
 
 
-def verify_code(code: CodeType) -> None:
+def verify_code(code: CodeType, debug=True) -> None:
     code_data = to_code_data(code)
     code_data._verify()
     resulting_code = from_code_data(code_data)
 
-    # First compare as primitives, for better diffing if they aren't equal
-    assert code_to_primitives(code, verify_line_mappings=True) == code_to_primitives(
-        resulting_code, verify_line_mappings=False
-    )
+    # If we aren't debugging just assert they are equal
+    if not debug:
+        assert code == resulting_code
 
-    # Then compare objects directly, for greater equality confidence
+    # Otherwise, we want to get a more granular error message, if possible
+    code_equal = code == resulting_code
+    if code_equal:
+        return
+
+    # Otherwise, we start analyzing the code in more granular ways to try to narrow
+    # down which part of the code object is different.
+
+    # First, we check if the primitives are the same, minus the line table
+    assert code_to_primitives(code) == code_to_primitives(resulting_code)
+
+    # If they are the same, we can check if the line table is the same
+    verify_line_mapping(code, resulting_code)
+
+    # If the line table is the same, we can verify that the constant keys are the same
+    verify_constant_keys(code, resulting_code)
+
+    # If all those are the same, then we aren't sure why the code objects are different
+    # and just assert they are equal
     assert code == resulting_code
+
     # We used to compare the marhshalled bytes as well, but this was unstable
     # due to whether the constants had refernces to them, so we disabled it
 
@@ -189,27 +209,21 @@ code_attributes = tuple(
     # TODO: look at how co_lines works and make sure we can duplicate logic for mapping
     # https://docs.python.org/3/whatsnew/3.10.html?highlight=co_lines#pep-626-precise-line-numbers-for-debugging-and-other-tools
     and name != "co_lines"
+    # Also ignore lines
+    and name != "co_lnotab" and name != "co_linetable"
 )
 
 
-def code_to_primitives(code: CodeType, verify_line_mappings: bool) -> dict[str, object]:
+def code_to_primitives(code: CodeType) -> dict[str, object]:
     """
     Converts a code object to primitives, for better pytest diffing.
-
-    Also verifies that line mapping are accurate for each
     """
-    if verify_line_mappings:
-        verify_line_mapping(code)
     return {
         name: (
-            # Recursively transform constants
             tuple(
-                code_to_primitives(a, verify_line_mappings)
-                if isinstance(a, CodeType)
-                else a
-                for a in getattr(code, name)
+                code_to_primitives(a) if isinstance(a, CodeType) else a
+                for a in code.co_consts
             )
-            # Compare code with instructions for easier diff
             if name == "co_consts"
             else [(i.opname, i.argval) for i in _get_instructions_bytes(code.co_code)]
             if name == "co_code"
@@ -219,14 +233,24 @@ def code_to_primitives(code: CodeType, verify_line_mappings: bool) -> dict[str, 
     }
 
 
-def code_to_dict(code: CodeType) -> dict[str, object]:
-    """
-    Converts a code object to a dict for testing
-    """
-    return {name: getattr(code, name) for name in dir(code)}
+_PyCode_ConstantKey = ctypes.pythonapi._PyCode_ConstantKey
+_PyCode_ConstantKey.restype = ctypes.py_object
 
 
-def verify_line_mapping(code: CodeType):
+def verify_constant_keys(code: CodeType, resulting_code: CodeType) -> None:
+    """
+    Verifies that the constant keys are the same in the code object.
+    """
+    for l, r in zip(code.co_consts, resulting_code.co_consts):  # noqa: E741
+        if isinstance(l, CodeType):
+            verify_constant_keys(l, r)
+        else:
+            assert _PyCode_ConstantKey(ctypes.py_object(l)) == _PyCode_ConstantKey(
+                ctypes.py_object(r)
+            )
+
+
+def verify_line_mapping(code: CodeType, resulting_code: CodeType) -> None:
     """
     Verify the mapping type by testing each conversion layer and making sure they
     are isomorphic.
@@ -234,33 +258,49 @@ def verify_line_mapping(code: CodeType):
     The tests are written in this way, so we can more easily which layer is
     causing the error.
     """
-    # Include when we need to show locals
-    # _dis = dis.Bytecode(code).dis()
-    # print(_dis)
+    b = get_code_line_bytes(code)
+    # if they are not equal, try seeing where the process failed
+    if b != get_code_line_bytes(resulting_code):
+        max_offset = len(code.co_code)
+        expanded_items = bytes_to_items(b)
+        assert items_to_bytes(expanded_items) == b, "bytes to items to bytes"
 
-    b: bytes = code.co_linetable if USE_LINETABLE else code.co_lnotab  # type: ignore
-    max_offset = len(code.co_code)
-    expanded_items = bytes_to_items(b)
-    assert items_to_bytes(expanded_items) == b, "bytes to items to bytes"
+        collapsed_items = collapse_items(expanded_items, USE_LINETABLE)
+        assert (
+            expand_items(collapsed_items, USE_LINETABLE) == expanded_items
+        ), "collapsed to expanded to collapsed"
 
-    collapsed_items = collapse_items(expanded_items, USE_LINETABLE)
-    assert (
-        expand_items(collapsed_items, USE_LINETABLE) == expanded_items
-    ), "collapsed to expanded to collapsed"
+        mapping = items_to_mapping(collapsed_items, max_offset, USE_LINETABLE)
+        assert (
+            mapping_to_items(mapping, USE_LINETABLE) == collapsed_items
+        ), "items to mapping to items"
 
-    mapping = items_to_mapping(collapsed_items, max_offset, USE_LINETABLE)
-    assert (
-        mapping_to_items(mapping, USE_LINETABLE) == collapsed_items
-    ), "items to mapping to items"
+        assert mapping_to_line_starts(mapping, code.co_firstlineno, max_offset) == dict(
+            dis.findlinestarts(code)
+        ), "mapping matches dis.findlinestarts"
 
-    assert mapping_to_line_starts(mapping, code.co_firstlineno, max_offset) == dict(
-        dis.findlinestarts(code)
-    ), "mapping matches dis.findlinestarts"
+        if hasattr(code, "co_lines"):
+            assert mapping == co_lines_to_mapping(
+                cast(Any, code).co_lines(), code.co_firstlineno
+            ), "mapping matches dis.co_lines"
 
-    if hasattr(code, "co_lines"):
-        assert mapping == co_lines_to_mapping(
-            cast(Any, code).co_lines(), code.co_firstlineno
-        ), "mapping matches dis.co_lines"
+        assert b == get_code_line_bytes(
+            resulting_code
+        ), "somehow line table bytes are still different"
+
+    # Recurse on inner code objects
+    for i, const in enumerate(code.co_consts):
+        if isinstance(const, CodeType):
+            verify_line_mapping(const, resulting_code.co_consts[i])
+
+
+def get_code_line_bytes(code: CodeType) -> bytes:
+    """
+    Get the bytes for a line of code.
+    """
+    if USE_LINETABLE:
+        return cast(bytes, code.co_linetable)
+    return code.co_lnotab
 
 
 def mapping_to_line_starts(

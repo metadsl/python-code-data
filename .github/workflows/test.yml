@@ -21,8 +21,12 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
-      # TODO: #48 Only install test requirements instead of all pinned in CI
+        # https://github.com/actions/checkout/issues/124#issuecomment-586664611
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
       - run: pip install -e . -r requirements.test.txt
+      # TODO: Enable dev mode for Python
+      # https://docs.python.org/3/library/devmode.html#devmode
       - run: pytest -v code_data
       - name: Commit and push failing example
         if: failure()

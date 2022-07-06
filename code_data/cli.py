@@ -29,6 +29,7 @@ parser.add_argument(
 parser.add_argument("--source", action="store_true", help="print the source code")
 
 
+# TODO: #51 Add tests for CLI
 def main():
     """
     Parse the CLI commands and print the code data.
@@ -75,4 +76,5 @@ def main():
     code_data = to_code_data(code)
     console.print(code_data)
     if show_dis_after:
-        dis.dis(from_code_data(code_data))
+        res = from_code_data(code_data)
+        dis.dis(res)
