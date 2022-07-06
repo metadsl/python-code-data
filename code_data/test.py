@@ -241,7 +241,7 @@ def verify_constant_keys(code: CodeType, resulting_code: CodeType) -> None:
     """
     Verifies that the constant keys are the same in the code object.
     """
-    for l, r in zip(code.co_consts, resulting_code.co_consts):
+    for l, r in zip(code.co_consts, resulting_code.co_consts):  # noqa: E741
         if isinstance(l, CodeType):
             verify_constant_keys(l, r)
         else:
@@ -289,17 +289,17 @@ def verify_line_mapping(code: CodeType, resulting_code: CodeType) -> None:
         ), "somehow line table bytes are still different"
 
     # Recurse on inner code objects
-    for const in code.co_consts:
+    for i, const in enumerate(code.co_consts):
         if isinstance(const, CodeType):
-            verify_line_mapping(const)
+            verify_line_mapping(const, resulting_code.co_consts[i])
 
 
-def get_code_line_bytes(code: CodeType, offset: int) -> bytes:
+def get_code_line_bytes(code: CodeType) -> bytes:
     """
     Get the bytes for a line of code.
     """
     if USE_LINETABLE:
-        return code.co_linetable
+        return cast(bytes, code.co_linetable)
     return code.co_lnotab
 
 
