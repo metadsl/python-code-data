@@ -5,7 +5,6 @@ import dis
 import pathlib
 import sys
 import warnings
-from datetime import timedelta
 from dis import _get_instructions_bytes  # type: ignore
 from types import CodeType
 from typing import Any, Iterable, Optional, cast
