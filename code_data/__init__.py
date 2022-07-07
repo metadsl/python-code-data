@@ -48,9 +48,7 @@ class CodeData(DataclassHideDefault):
 
     # A list of additional line offsets for bytecode instructions
     # past the range which exist, which were eliminated by the compiler.
-    _additional_line_mapping: LineMapping = field(
-        default_factory=LineMapping
-    )
+    _additional_line_mapping: LineMapping = field(default_factory=LineMapping)
 
     # The first line number to use for the bytecode, if it doesn't match
     # the first line number in the line table.
@@ -62,9 +60,7 @@ class CodeData(DataclassHideDefault):
 
     # Additional constants to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
-    _additional_constants: dict[int, ConstantDataType] = field(
-        default_factory=dict
-    )
+    _additional_constants: dict[int, ConstantDataType] = field(default_factory=dict)
 
     # The type of block this is
     type: BlockType = field(default=None)
