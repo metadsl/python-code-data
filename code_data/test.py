@@ -61,6 +61,7 @@ EXAMPLES = (
             id="multiple returns",
         ),
         pytest.param("_ = 0j", id="complex"),
+        # pytest.param("class G: pass\n" * 1006, id="many classes"),
     ]
     # Read all test files from directory
     + [
@@ -154,9 +155,7 @@ def test_modules():
 @given(source_code=hypothesmith.from_node())
 @settings(
     suppress_health_check=(HealthCheck.filter_too_much, HealthCheck.too_slow),
-    deadline=timedelta(
-        milliseconds=5 * 1000
-    ),  # increase deadline to account for slow times in CI
+    deadline=None
 )
 def test_generated(source_code):
     with warnings.catch_warnings():
