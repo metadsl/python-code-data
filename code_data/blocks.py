@@ -409,8 +409,12 @@ Arg = Union[int, Jump, Name, Constant]
 
 
 def normalize_arg(arg: Arg) -> None:
+    from . import CodeData
+
     if isinstance(arg, (Name, Constant)):
         arg._index_override = None
+        if isinstance(arg, Constant) and isinstance(arg.value, CodeData):
+            arg.value.normalize()
 
 
 # dict mapping block offset to list of instructions in the block
