@@ -13,7 +13,13 @@ from typing import FrozenSet, Optional, Tuple, Union
 if sys.version_info >= (3, 10):
     from types import EllipsisType
 
-from .blocks import Blocks, blocks_to_bytes, bytes_to_blocks, verify_block
+from .blocks import (
+    Blocks,
+    blocks_to_bytes,
+    bytes_to_blocks,
+    normalize_blocks,
+    verify_block,
+)
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
 from .line_mapping import LineMapping, from_line_mapping, to_line_mapping
@@ -42,19 +48,23 @@ class CodeData(DataclassHideDefault):
 
     # A list of additional line offsets for bytecode instructions
     # past the range which exist, which were eliminated by the compiler.
-    additional_line_mapping: LineMapping = field(default_factory=LineMapping)
+    _additional_line_mapping: LineMapping = field(
+        default_factory=LineMapping
+    )
 
     # The first line number to use for the bytecode, if it doesn't match
     # the first line number in the line table.
-    first_line_number_override: Optional[int] = field(default=None)
+    _first_line_number_override: Optional[int] = field(default=None)
 
     # Additional names to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
-    additional_names: dict[int, str] = field(default_factory=dict)
+    _additional_names: dict[int, str] = field(default_factory=dict)
 
     # Additional constants to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
-    additional_constants: dict[int, ConstantDataType] = field(default_factory=dict)
+    _additional_constants: dict[int, ConstantDataType] = field(
+        default_factory=dict
+    )
 
     # The type of block this is
     type: BlockType = field(default=None)
@@ -93,6 +103,18 @@ class CodeData(DataclassHideDefault):
 
     def _verify(self) -> None:
         verify_block(self.blocks)
+
+    def normalize(self) -> None:
+        """
+        Removes all fields from the bytecode that do not effect its semantics, but only
+        its serialization. This includes things like the order of the `co_consts` array,
+        the number of extended args for some bytecodes, etc.
+        """
+        self._additional_constants = {}
+        self._additional_names = {}
+        self._additional_line_mapping = LineMapping()
+        self._first_line_number_override = None
+        normalize_blocks(self.blocks)
 
 
 # Functions should have both of these flags set
@@ -174,15 +196,15 @@ def from_code_data(code_data: CodeData) -> CodeType:
     flags = from_flags_data(flags_data)
     code, line_mapping, names, constants = blocks_to_bytes(
         code_data.blocks,
-        code_data.additional_names,
-        code_data.additional_constants,
+        code_data._additional_names,
+        code_data._additional_constants,
         code_data.type,
     )
 
     consts = tuple(map(from_code_constant, constants))
 
-    line_mapping.update(code_data.additional_line_mapping)
-    first_line_no = line_mapping.trim_first_line(code_data.first_line_number_override)
+    line_mapping.update(code_data._additional_line_mapping)
+    first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
 
     line_table = from_line_mapping(line_mapping)
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232

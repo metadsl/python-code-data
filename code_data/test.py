@@ -15,7 +15,7 @@ import pytest
 import rich.progress
 from hypothesis import HealthCheck, given, settings
 
-from . import from_code_data, to_code_data
+from . import CodeData, from_code_data, to_code_data
 from .line_mapping import (
     USE_LINETABLE,
     LineMapping,
@@ -155,7 +155,7 @@ def test_modules():
 @settings(
     suppress_health_check=(HealthCheck.filter_too_much, HealthCheck.too_slow),
     deadline=timedelta(
-        milliseconds=2000
+        milliseconds=5 * 1000
     ),  # increase deadline to account for slow times in CI
 )
 def test_generated(source_code):
@@ -171,13 +171,14 @@ def verify_code(code: CodeType, debug=True) -> None:
     code_data._verify()
     resulting_code = from_code_data(code_data)
 
+    verify_normalize(code_data)
+
     # If we aren't debugging just assert they are equal
     if not debug:
         assert code == resulting_code
-
+        return
     # Otherwise, we want to get a more granular error message, if possible
-    code_equal = code == resulting_code
-    if code_equal:
+    if code == resulting_code:
         return
 
     # Otherwise, we start analyzing the code in more granular ways to try to narrow
@@ -198,6 +199,17 @@ def verify_code(code: CodeType, debug=True) -> None:
 
     # We used to compare the marhshalled bytes as well, but this was unstable
     # due to whether the constants had refernces to them, so we disabled it
+
+
+def verify_normalize(code_data: CodeData) -> None:
+    """
+    Verify that after normalizing, going to/from bytecode produces the same code_data.
+    """
+    code_data.normalize()
+    normalized_code = from_code_data(code_data)
+    new_code_data = to_code_data(normalized_code)
+    new_code_data.normalize()
+    assert code_data == new_code_data
 
 
 code_attributes = tuple(

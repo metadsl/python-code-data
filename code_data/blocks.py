@@ -76,16 +76,16 @@ def bytes_to_blocks(
             # there are cases where jump instructions could be different values
             # (and have different number of args), but point to the same instruction
             # offset.
-            n_args_override = n_args
+            n_args_override = n_args if n_args > 1 else None
         else:
             n_args_override = None
 
         instruction = Instruction(
             name=dis.opname[opcode],
             arg=processed_arg,
-            n_args_override=n_args_override,
+            _n_args_override=n_args_override,
             line_number=line_mapping.offset_to_line.pop(offset),
-            line_offsets_override=line_mapping.offset_to_additional_line_offsets.pop(
+            _line_offsets_override=line_mapping.offset_to_additional_line_offsets.pop(
                 offset, []
             ),
         )
@@ -175,7 +175,7 @@ def blocks_to_bytes(
                         constant_final_positions,
                     )
                     args[block_index, instruction_index] = arg_value
-                n_instructions = instruction.n_args_override or _instrsize(arg_value)
+                n_instructions = instruction._n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
         # Then go and update all the jump instructions. If any of them
         # change the number of instructions needed for the arg, repeat
@@ -185,7 +185,7 @@ def blocks_to_bytes(
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
                 arg_value = args[block_index, instruction_index]
-                n_instructions = instruction.n_args_override or _instrsize(arg_value)
+                n_instructions = instruction._n_args_override or _instrsize(arg_value)
                 current_instruction_offset += n_instructions
 
                 if isinstance(arg, Jump):
@@ -203,7 +203,7 @@ def blocks_to_bytes(
                     # the same as the old, mark this as updated, so we re-calculate
                     # block positions!
                     if (
-                        not instruction.n_args_override
+                        not instruction._n_args_override
                         and n_instructions != _instrsize(new_arg_value)
                     ):
                         changed_instruction_lengths = True
@@ -228,7 +228,6 @@ def blocks_to_bytes(
         constants[i]
         for _, i in sorted(constant_final_positions.items(), key=lambda x: x[0])
     ]
-
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
@@ -237,13 +236,13 @@ def blocks_to_bytes(
             offset = len(bytes_)
 
             line_mapping.offset_to_line[offset] = instruction.line_number
-            if instruction.line_offsets_override:
+            if instruction._line_offsets_override:
                 line_mapping.offset_to_additional_line_offsets[
                     offset
-                ] = instruction.line_offsets_override
+                ] = instruction._line_offsets_override
 
             arg_value = args[block_index, instruction_index]
-            n_args = instruction.n_args_override or _instrsize(arg_value)
+            n_args = instruction._n_args_override or _instrsize(arg_value)
             # Duplicate semantics of write_op_arg
             # to produce the the right number of extended arguments
             # https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L22-L44
@@ -301,14 +300,14 @@ def from_arg(
         if arg.name not in names:
             names.append(arg.name)
         index = names.index(arg.name)
-        final_index = index if arg.index_override is None else arg.index_override
+        final_index = index if arg._index_override is None else arg._index_override
         name_final_positions[final_index] = index
         return final_index
     if isinstance(arg, Constant):
         if arg.value not in constants:
             constants.append(arg.value)
         index = constants.index(arg.value)
-        final_index = index if arg.index_override is None else arg.index_override
+        final_index = index if arg._index_override is None else arg._index_override
         constants_final_positions[final_index] = index
         return final_index
     return arg
@@ -327,6 +326,16 @@ def verify_block(blocks: Blocks) -> None:
                 assert arg.target in range(len(blocks)), "Jump target is out of range"
 
 
+def normalize_blocks(blocks: Blocks) -> None:
+    """
+    Normalize the blocks, by making sure every
+    instruction that jumps can find it's block.
+    """
+    for block in blocks.values():
+        for instruction in block:
+            instruction._normalize()
+
+
 @dataclass
 class Instruction(DataclassHideDefault):
     # The name of the instruction
@@ -340,7 +349,7 @@ class Instruction(DataclassHideDefault):
     # using `instrsize`, but in python < 3.10, sometimes instructions are prefixed
     # with extended args with value 0 (not sure why or how), so we need to save
     # the value manually to recreate the instructions
-    n_args_override: Optional[int] = field(repr=False)
+    _n_args_override: Optional[int] = field(default=None)
 
     # The line number of the instruction
     line_number: Optional[int] = field(default=None)
@@ -349,7 +358,12 @@ class Instruction(DataclassHideDefault):
     # Unneccessary to preserve line semantics, but needed to preserve isomoprhic
     # byte-for-byte mapping
     # Only need in Python < 3.10
-    line_offsets_override: list[int] = field(default_factory=list)
+    _line_offsets_override: list[int] = field(default_factory=list)
+
+    def _normalize(self) -> None:
+        self._n_args_override = None
+        self._line_offsets_override = []
+        normalize_arg(self.arg)
 
 
 @dataclass
@@ -357,7 +371,7 @@ class Jump(DataclassHideDefault):
     # The block index of the target
     target: int = field(metadata={"positional": True})
     # Whether the jump is absolute or relative
-    relative: bool = field(repr=False)
+    relative: bool = field(default=False)
 
 
 @dataclass
@@ -370,7 +384,7 @@ class Name(DataclassHideDefault):
 
     # Optional override for the position of the name, if it is not ordered by occurance
     # in the code.
-    index_override: Optional[int] = field(default=None)
+    _index_override: Optional[int] = field(default=None)
 
 
 @dataclass
@@ -381,7 +395,7 @@ class Constant(DataclassHideDefault):
 
     value: ConstantDataType = field(metadata={"positional": True})
     # Optional override for the position if it is not ordered by occurance in the code.
-    index_override: Optional[int] = field(default=None)
+    _index_override: Optional[int] = field(default=None)
 
 
 # TODO: Add:
@@ -392,6 +406,11 @@ class Constant(DataclassHideDefault):
 # 8. Generator kind
 
 Arg = Union[int, Jump, Name, Constant]
+
+
+def normalize_arg(arg: Arg) -> None:
+    if isinstance(arg, (Name, Constant)):
+        arg._index_override = None
 
 
 # dict mapping block offset to list of instructions in the block
@@ -440,6 +459,10 @@ def _instrsize(arg: int) -> int:
 
     From https://github.com/python/cpython/blob/b2e5794870eb4728ddfaafc0f79a40299576434f/Python/wordcode_helpers.h#L11-L20 # noqa: E501
     """
+    # Negative args need to wrap
+    # https://github.com/python/cpython/issues/90880
+    if arg < 0:
+        return 4
     return 1 if arg <= 0xFF else 2 if arg <= 0xFFFF else 3 if arg <= 0xFFFFFF else 4
 
 
