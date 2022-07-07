@@ -155,7 +155,7 @@ def test_modules():
 @given(source_code=hypothesmith.from_node())
 @settings(
     suppress_health_check=(HealthCheck.filter_too_much, HealthCheck.too_slow),
-    deadline=None
+    deadline=None,
 )
 def test_generated(source_code):
     with warnings.catch_warnings():
