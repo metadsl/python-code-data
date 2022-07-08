@@ -25,6 +25,8 @@ from itertools import chain
 from types import CodeType
 from typing import List, Optional, cast
 
+from code_data.dataclass_hide_default import DataclassHideDefault
+
 __all__ = ["LineMapping", "to_line_mapping", "from_line_mapping"]
 
 
@@ -74,8 +76,8 @@ class CollapsedLineTableItem:
 CollapsedItems = List[CollapsedLineTableItem]
 
 
-@dataclass
-class AdditionalLine:
+@dataclass(frozen=True)
+class AdditionalLine(DataclassHideDefault):
     line: Optional[int]
     additional_offsets: tuple[int, ...] = field(default=tuple())
 
