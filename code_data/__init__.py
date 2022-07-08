@@ -25,7 +25,7 @@ from .blocks import (
 )
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_mapping import from_line_mapping, to_line_mapping
+from .line_mapping import AdditionalLine, from_line_mapping, to_line_mapping
 
 __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
@@ -52,7 +52,7 @@ class CodeData(DataclassHideDefault):
     # On Python < 3.10 sometimes there is a line mapping for an additional line
     # for the bytecode after the last one in the code, for an instruction which was
     # compiled away. Include this so we can represent the line mapping faithfully.
-    _additional_line: Optional[int] = field(default=None)
+    _additional_line: Optional[AdditionalLine] = field(default=None)
 
     # The first line number to use for the bytecode, if it doesn't match
     # the first line number in the line table.
@@ -85,7 +85,7 @@ class CodeData(DataclassHideDefault):
     stacksize: int = field(default=1)
 
     # code flags
-    flags: FlagsData = field(default_factory=set)
+    flags: FlagsData = field(default_factory=frozenset)
 
     # tuple of names of arguments and local variables
     varnames: Tuple[str, ...] = field(default=tuple())
@@ -195,7 +195,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
     """
     flags_data = code_data.flags
     if isinstance(code_data.type, FunctionBlock):
-        flags_data = FN_FLAGS | flags_data
+        flags_data = flags_data | FN_FLAGS
     flags = from_flags_data(flags_data)
     code, line_mapping, names, constants = blocks_to_bytes(
         code_data.blocks,
@@ -207,7 +207,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
     consts = tuple(map(from_code_constant, constants))
 
     if code_data._additional_line:
-        line_mapping.offset_to_line[len(code)] = code_data._additional_line
+        line_mapping.add_additional_line(code_data._additional_line, len(code))
 
     first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
 

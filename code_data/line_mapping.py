@@ -75,6 +75,12 @@ CollapsedItems = List[CollapsedLineTableItem]
 
 
 @dataclass
+class AdditionalLine:
+    line: Optional[int]
+    additional_offsets: tuple[int, ...] = field(default=tuple())
+
+
+@dataclass
 class LineMapping:
     # Mapping of bytecode offset to the line number associated with it
     offset_to_line: dict[int, Optional[int]] = field(default_factory=dict)
@@ -86,22 +92,37 @@ class LineMapping:
         default_factory=dict
     )
 
-    def pop_additional_line(self, code_length: int) -> Optional[int]:
+    def pop_additional_line(self, next_offset: int) -> Optional[AdditionalLine]:
         """
         Pops the line for the next line after the code, if it exists.
         """
-        if self.offset_to_additional_line_offsets:
+        if self.offset_to_additional_line_offsets and set(
+            self.offset_to_additional_line_offsets.keys()
+        ) != {next_offset}:
             raise NotImplementedError(
-                "All additional offsets should be included in the instructions"
+                "Only support additional offsets for last instructions"
             )
         if self.offset_to_line:
-            next_offset = code_length
             if set(self.offset_to_line.keys()) != {next_offset}:
                 raise NotImplementedError(
                     "The only additional offset we support is the last line"
                 )
-            return self.offset_to_line.pop(next_offset)
+            return AdditionalLine(
+                self.offset_to_line[next_offset],
+                tuple(self.offset_to_additional_line_offsets.pop(next_offset, list())),
+            )
         return None
+
+    def add_additional_line(
+        self, additional_line: AdditionalLine, len_code: int
+    ) -> None:
+        """
+        Add an additional line to the mapping.
+        """
+        self.offset_to_line[len_code] = additional_line.line
+        self.offset_to_additional_line_offsets[
+            len_code
+        ] = additional_line.additional_offsets
 
     def set_first_line(self, first_line: int) -> Optional[int]:
         """
