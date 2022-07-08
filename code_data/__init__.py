@@ -150,15 +150,10 @@ def to_code_data(code: CodeType) -> CodeData:
     elif len(fn_flags) == 2:
         # Use the first const as a docstring if its a string
         # https://github.com/python/cpython/blob/da8be157f4e275c4c32b9199f1466ed7e52f62cf/Objects/funcobject.c#L33-L38
-        # TODO: Maybe just assume that first arg is not docstring if it's none? Naw...
-        docstring_in_consts = False
-        docstring: Optional[str] = None
-        if constants:
-            first_constant = constants[0]
-            if isinstance(first_constant, str) or first_constant is None:
-                docstring_in_consts = True
-                docstring = first_constant
-        block_type = FunctionBlock(docstring, docstring_in_consts)
+        docstring = (
+            constants[0] if constants and isinstance(constants[0], str) else None
+        )
+        block_type = FunctionBlock(docstring)
         flag_data -= FN_FLAGS
     else:
         raise ValueError(f"Expected both flags to represent function: {fn_flags}")
@@ -264,9 +259,6 @@ BlockType = Union["FunctionBlock", None]
 @dataclass(frozen=True)
 class FunctionBlock(DataclassHideDefault):
     docstring: Optional[str] = field(default=None)
-    # Set to false if the docstring is not saved as a constant. In this case, it
-    # must be 0. This happens for list comprehensions
-    docstring_in_consts: bool = field(default=True)
 
 
 ConstantDataType = Union[

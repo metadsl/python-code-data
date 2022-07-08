@@ -171,7 +171,7 @@ def verify_code(code: CodeType, debug=True) -> None:
     code_data._verify()
     resulting_code = from_code_data(code_data)
 
-    # verify_normalize(code_data)
+    verify_normalize(code_data)
 
     # If we aren't debugging just assert they are equal
     if not debug:

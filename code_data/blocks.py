@@ -51,8 +51,8 @@ def bytes_to_blocks(
     # fine as long as names aren't duplicated, which they don't seem to be in the
     # same way as constants
     found_constant_indices: set[int] = set()
-    # If we have a function block, the first constant is the docstring.
-    if isinstance(block_type, FunctionBlock) and block_type.docstring_in_consts:
+    # If we have a function block and a docstring, the first constant is the docstring.
+    if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
         found_constants.append(block_type.docstring)
         found_constant_indices.add(0)
 
@@ -166,7 +166,7 @@ def blocks_to_bytes(
     constant_final_positions: dict[int, int] = {}
 
     # If it is a function block, we start with the docstring
-    if isinstance(block_type, FunctionBlock) and block_type.docstring_in_consts:
+    if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
         constants.append(block_type.docstring)
         constant_final_positions[0] = 0
 
@@ -183,6 +183,7 @@ def blocks_to_bytes(
                 else:
                     arg_value = from_arg(
                         instruction.arg,
+                        block_type,
                         names,
                         name_final_positions,
                         constants,
@@ -304,11 +305,14 @@ def to_arg(
 
 def from_arg(
     arg: Arg,
+    block_type: BlockType,
     names: list[str],
     name_final_positions: dict[int, int],
     constants: list[ConstantDataType],
     constants_final_positions: dict[int, int],
 ) -> int:
+    from . import FunctionBlock
+
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
@@ -320,6 +324,25 @@ def from_arg(
         name_final_positions[final_index] = index
         return final_index
     if isinstance(arg, Constant):
+
+        # If this is the first index, and we have a docstring which is None,
+        # and this value is a string, prepend a None instead of a string
+        # so that this value is not used as a docstring.
+        # This is needed to preserve the behavior for functions which don't have
+        # a docstring after normalizing, otherwise, we would eliminate the None
+        # const, because it is unused, and then fail to re-add it.
+        # We also don't want to uncoditionally use the docstring as the first argument,
+        # because list comprehensions don't do this.
+        docstring_is_none = (
+            isinstance(block_type, FunctionBlock) and block_type.docstring is None
+        )
+        first_const = not constants
+        arg_is_string = isinstance(arg.value, str)
+        no_override = arg._index_override is None
+        if docstring_is_none and first_const and arg_is_string and no_override:
+            constants.append(None)
+            constants_final_positions[0] = 0
+
         if arg.value not in constants:
             constants.append(arg.value)
         index = constants.index(arg.value)
