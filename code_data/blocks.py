@@ -9,7 +9,7 @@ import ctypes
 import dis
 import sys
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
 
 from .dataclass_hide_default import DataclassHideDefault
 from .line_mapping import LineMapping
@@ -24,7 +24,7 @@ def bytes_to_blocks(
     names: tuple[str, ...],
     constants: tuple[ConstantDataType, ...],
     block_type: BlockType,
-) -> tuple[Blocks, dict[int, str], dict[int, ConstantDataType]]:
+) -> tuple[Blocks, AdditionalNames, AdditionalConstants]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -91,6 +91,11 @@ def bytes_to_blocks(
         )
         offsets_and_instruction.append((offset, instruction))
 
+        # Pop all additional line offsets for additional args
+        for i in range(offset + 2, next_offset, 2):
+            line_mapping.offset_to_line.pop(i)
+            line_mapping.offset_to_additional_line_offsets.pop(i, None)
+
     # Compute a sorted list of target, to map each one to a bloc offset
     targets = sorted(targets_set)
     del targets_set
@@ -109,16 +114,18 @@ def bytes_to_blocks(
             instruction.arg.target = targets.index(instruction.arg.target)
         block.append(instruction)
 
-    additional_names = {
-        i: name for i, name in enumerate(names) if name not in found_names
-    }
-    additional_constants = {
-        i: constant
+    additional_names = tuple(
+        AdditionalName(name, i)
+        for i, name in enumerate(names)
+        if name not in found_names
+    )
+    additional_constants = tuple(
+        AdditionalConstant(constant, i)
         for i, constant in enumerate(constants)
         if i not in found_constant_indices
-    }
+    )
     return (
-        {i: block for i, block in enumerate(blocks)},
+        tuple(tuple(instruction for instruction in block) for block in blocks),
         additional_names,
         additional_constants,
     )
@@ -126,8 +133,8 @@ def bytes_to_blocks(
 
 def blocks_to_bytes(
     blocks: Blocks,
-    additional_names: dict[int, str],
-    additional_consts: dict[int, ConstantDataType],
+    additional_names: AdditionalNames,
+    additional_consts: AdditionalConstants,
     block_type: BlockType,
 ) -> Tuple[bytes, LineMapping, tuple[str, ...], tuple[ConstantDataType, ...]]:
     from . import FunctionBlock
@@ -161,7 +168,7 @@ def blocks_to_bytes(
 
         current_instruction_offset = 0
         # First go through and update all the instruction blocks
-        for block_index, block in blocks.items():
+        for block_index, block in enumerate(blocks):
             block_index_to_instruction_offset[block_index] = current_instruction_offset
             for instruction_index, instruction in enumerate(block):
                 if (block_index, instruction_index) in args:
@@ -181,7 +188,7 @@ def blocks_to_bytes(
         # change the number of instructions needed for the arg, repeat
         changed_instruction_lengths = False
         current_instruction_offset = 0
-        for block_index, block in blocks.items():
+        for block_index, block in enumerate(blocks):
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
                 arg_value = args[block_index, instruction_index]
@@ -209,7 +216,8 @@ def blocks_to_bytes(
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
     # Add additional names to the names and add final positions
-    for i, name in additional_names.items():
+    for additional_name in additional_names:
+        i, name = additional_name.index, additional_name.name
         names.append(name)
         name_final_positions[i] = len(names) - 1
 
@@ -219,7 +227,8 @@ def blocks_to_bytes(
     ]
 
     # Add additional consts to the constants and add final positions
-    for i, constant in additional_consts.items():
+    for additional_constant in additional_consts:
+        i, constant = additional_constant.index, additional_constant.constant
         constants.append(constant)
         constant_final_positions[i] = len(constants) - 1
 
@@ -231,7 +240,7 @@ def blocks_to_bytes(
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
-    for block_index, block in blocks.items():
+    for block_index, block in enumerate(blocks):
         for instruction_index, instruction in enumerate(block):
             offset = len(bytes_)
 
@@ -318,7 +327,7 @@ def verify_block(blocks: Blocks) -> None:
     Verify that the blocks are valid, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in blocks.values():
+    for block in blocks:
         assert block, "Block is empty"
         for instruction in block:
             arg = instruction.arg
@@ -331,7 +340,7 @@ def normalize_blocks(blocks: Blocks) -> None:
     Normalize the blocks, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in blocks.values():
+    for block in blocks:
         for instruction in block:
             instruction._normalize()
 
@@ -417,8 +426,32 @@ def normalize_arg(arg: Arg) -> None:
             arg.value.normalize()
 
 
-# dict mapping block offset to list of instructions in the block
-Blocks = Dict[int, List[Instruction]]
+# tuple of blocks, each block is a list of instructions. Blocks are
+Blocks = Tuple[Tuple[Instruction, ...], ...]
+
+
+@dataclass
+class AdditionalName(DataclassHideDefault):
+    """
+    An additional name argument, that was not used in the instructions
+    """
+
+    name: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+@dataclass
+class AdditionalConstant(DataclassHideDefault):
+    """
+    An additional name argument, that was not used in the instructions
+    """
+
+    constant: ConstantDataType = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+AdditionalNames = Tuple[AdditionalName, ...]
+AdditionalConstants = Tuple[AdditionalConstant, ...]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069

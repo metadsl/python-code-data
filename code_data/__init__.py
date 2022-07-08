@@ -14,6 +14,8 @@ if sys.version_info >= (3, 10):
     from types import EllipsisType
 
 from .blocks import (
+    AdditionalConstants,
+    AdditionalNames,
     Blocks,
     blocks_to_bytes,
     bytes_to_blocks,
@@ -22,13 +24,13 @@ from .blocks import (
 )
 from .dataclass_hide_default import DataclassHideDefault
 from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_mapping import LineMapping, from_line_mapping, to_line_mapping
+from .line_mapping import from_line_mapping, to_line_mapping
 
 __all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
 
 
-@dataclass
+@dataclass(frozen=True)
 class CodeData(DataclassHideDefault):
     """
     A code object is what is seralized on disk as PYC file. It is the lowest
@@ -46,9 +48,10 @@ class CodeData(DataclassHideDefault):
     # Bytecode instructions
     blocks: Blocks = field(metadata={"positional": True})
 
-    # A list of additional line offsets for bytecode instructions
-    # past the range which exist, which were eliminated by the compiler.
-    _additional_line_mapping: LineMapping = field(default_factory=LineMapping)
+    # On Python < 3.10 sometimes there is a line mapping for an additional line
+    # for the bytecode after the last one in the code, for an instruction which was
+    # compiled away. Include this so we can represent the line mapping faithfully.
+    _additional_line: Optional[int] = field(default=None)
 
     # The first line number to use for the bytecode, if it doesn't match
     # the first line number in the line table.
@@ -56,11 +59,11 @@ class CodeData(DataclassHideDefault):
 
     # Additional names to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
-    _additional_names: dict[int, str] = field(default_factory=dict)
+    _additional_names: AdditionalNames = field(default=tuple())
 
     # Additional constants to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
-    _additional_constants: dict[int, ConstantDataType] = field(default_factory=dict)
+    _additional_constants: AdditionalConstants = field(default=tuple())
 
     # The type of block this is
     type: BlockType = field(default=None)
@@ -106,9 +109,9 @@ class CodeData(DataclassHideDefault):
         its serialization. This includes things like the order of the `co_consts` array,
         the number of extended args for some bytecodes, etc.
         """
-        self._additional_constants = {}
-        self._additional_names = {}
-        self._additional_line_mapping = LineMapping()
+        self._additional_constants = tuple()
+        self._additional_names = tuple()
+        self._additional_line = None
         self._first_line_number_override = None
         normalize_blocks(self.blocks)
 
@@ -130,6 +133,8 @@ def to_code_data(code: CodeType) -> CodeData:
         posonlyargcount = 0
 
     line_mapping = to_line_mapping(code)
+
+    # TODO: #54 For functions, do 1 + this line
     first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
 
     constants = tuple(map(to_code_constant, code.co_consts))
@@ -159,9 +164,10 @@ def to_code_data(code: CodeType) -> CodeData:
     blocks, additional_names, additional_constants = bytes_to_blocks(
         code.co_code, line_mapping, code.co_names, constants, block_type
     )
+    next_line = line_mapping.pop_additional_line(len(code.co_code))
     return CodeData(
         blocks,
-        line_mapping,
+        next_line,
         first_line_number_override,
         additional_names,
         additional_constants,
@@ -199,7 +205,9 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
     consts = tuple(map(from_code_constant, constants))
 
-    line_mapping.update(code_data._additional_line_mapping)
+    if code_data._additional_line:
+        line_mapping.offset_to_line[len(code)] = code_data._additional_line
+
     first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
 
     line_table = from_line_mapping(line_mapping)
@@ -246,6 +254,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
 # The type of block this is, as we can infer from the flags.
 # https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
+# TODO: Rename, overlaps with "blocks"
 BlockType = Union["FunctionBlock", None]
 
 

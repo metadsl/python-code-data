@@ -86,26 +86,22 @@ class LineMapping:
         default_factory=dict
     )
 
-    def update(self, other: LineMapping) -> None:
+    def pop_additional_line(self, code_length: int) -> Optional[int]:
         """
-        Add the other line mapping, keeping this one sorted
+        Pops the line for the next line after the code, if it exists.
         """
-
-        self.offset_to_line = dict(
-            sorted(
-                chain(self.offset_to_line.items(), other.offset_to_line.items()),
-                key=lambda item: item[0],
+        if self.offset_to_additional_line_offsets:
+            raise NotImplementedError(
+                "All additional offsets should be included in the instructions"
             )
-        )
-        self.offset_to_additional_line_offsets = dict(
-            sorted(
-                chain(
-                    self.offset_to_additional_line_offsets.items(),
-                    other.offset_to_additional_line_offsets.items(),
-                ),
-                key=lambda item: item[0],
-            )
-        )
+        if self.offset_to_line:
+            next_offset = code_length
+            if set(self.offset_to_line.keys()) != {next_offset}:
+                raise NotImplementedError(
+                    "The only additional offset we support is the last line"
+                )
+            return self.offset_to_line.pop(next_offset)
+        return None
 
     def set_first_line(self, first_line: int) -> Optional[int]:
         """
