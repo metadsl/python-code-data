@@ -25,6 +25,8 @@ from itertools import chain
 from types import CodeType
 from typing import List, Optional, cast
 
+from code_data.dataclass_hide_default import DataclassHideDefault
+
 __all__ = ["LineMapping", "to_line_mapping", "from_line_mapping"]
 
 
@@ -74,6 +76,12 @@ class CollapsedLineTableItem:
 CollapsedItems = List[CollapsedLineTableItem]
 
 
+@dataclass(frozen=True)
+class AdditionalLine(DataclassHideDefault):
+    line: Optional[int]
+    additional_offsets: tuple[int, ...] = field(default=tuple())
+
+
 @dataclass
 class LineMapping:
     # Mapping of bytecode offset to the line number associated with it
@@ -86,25 +94,36 @@ class LineMapping:
         default_factory=dict
     )
 
-    def update(self, other: LineMapping) -> None:
+    def pop_additional_line(self, next_offset: int) -> Optional[AdditionalLine]:
         """
-        Add the other line mapping, keeping this one sorted
+        Pops the line for the next line after the code, if it exists.
         """
+        if self.offset_to_additional_line_offsets and set(
+            self.offset_to_additional_line_offsets.keys()
+        ) != {next_offset}:
+            raise NotImplementedError(
+                "Only support additional offsets for last instructions"
+            )
+        if self.offset_to_line:
+            if set(self.offset_to_line.keys()) != {next_offset}:
+                raise NotImplementedError(
+                    "The only additional offset we support is the last line"
+                )
+            return AdditionalLine(
+                self.offset_to_line[next_offset],
+                tuple(self.offset_to_additional_line_offsets.pop(next_offset, list())),
+            )
+        return None
 
-        self.offset_to_line = dict(
-            sorted(
-                chain(self.offset_to_line.items(), other.offset_to_line.items()),
-                key=lambda item: item[0],
-            )
-        )
-        self.offset_to_additional_line_offsets = dict(
-            sorted(
-                chain(
-                    self.offset_to_additional_line_offsets.items(),
-                    other.offset_to_additional_line_offsets.items(),
-                ),
-                key=lambda item: item[0],
-            )
+    def add_additional_line(
+        self, additional_line: AdditionalLine, len_code: int
+    ) -> None:
+        """
+        Add an additional line to the mapping.
+        """
+        self.offset_to_line[len_code] = additional_line.line
+        self.offset_to_additional_line_offsets[len_code] = list(
+            additional_line.additional_offsets
         )
 
     def set_first_line(self, first_line: int) -> Optional[int]:

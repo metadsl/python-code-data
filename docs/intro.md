@@ -21,8 +21,9 @@ a higher level API than manipulating code objects directly, but faithfully
 maintains the full semantics of the code object for Python 3.7-3.10.
 
 - Tested to make sure the `CodeData` object is isomorphic to the original
-  code object on all builtin modules and using generative testing with Hypothesis (using [hypothesmith](https://github.com/Zac-HD/hypothesmith#hypothesmith) to generate Python code).
+  code object on all installed modules and using generative testing with Hypothesis (using [hypothesmith](https://github.com/Zac-HD/hypothesmith#hypothesmith) to generate Python code).
 - Decodes flags and bytecode into a human readable form.
+- Hashable, just like the original code object.
 - Provides a CLI to introspect Python objects from the command line, with
   colored pretty printing courtesy of Rich.
 

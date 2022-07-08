@@ -8,11 +8,12 @@ from __future__ import annotations
 import ctypes
 import dis
 import sys
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
+from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
 
 from .dataclass_hide_default import DataclassHideDefault
 from .line_mapping import LineMapping
+from .normalize import normalize
 
 if TYPE_CHECKING:
     from . import BlockType, ConstantDataType
@@ -24,7 +25,7 @@ def bytes_to_blocks(
     names: tuple[str, ...],
     constants: tuple[ConstantDataType, ...],
     block_type: BlockType,
-) -> tuple[Blocks, dict[int, str], dict[int, ConstantDataType]]:
+) -> tuple[Blocks, AdditionalNames, AdditionalConstants]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -50,8 +51,8 @@ def bytes_to_blocks(
     # fine as long as names aren't duplicated, which they don't seem to be in the
     # same way as constants
     found_constant_indices: set[int] = set()
-    # If we have a function block, the first constant is the docstring.
-    if isinstance(block_type, FunctionBlock) and block_type.docstring_in_consts:
+    # If we have a function block and a docstring, the first constant is the docstring.
+    if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
         found_constants.append(block_type.docstring)
         found_constant_indices.add(0)
 
@@ -85,11 +86,16 @@ def bytes_to_blocks(
             arg=processed_arg,
             _n_args_override=n_args_override,
             line_number=line_mapping.offset_to_line.pop(offset),
-            _line_offsets_override=line_mapping.offset_to_additional_line_offsets.pop(
-                offset, []
+            _line_offsets_override=tuple(
+                line_mapping.offset_to_additional_line_offsets.pop(offset, [])
             ),
         )
         offsets_and_instruction.append((offset, instruction))
+
+        # Pop all additional line offsets for additional args
+        for i in range(offset + 2, next_offset, 2):
+            line_mapping.offset_to_line.pop(i)
+            line_mapping.offset_to_additional_line_offsets.pop(i, None)
 
     # Compute a sorted list of target, to map each one to a bloc offset
     targets = sorted(targets_set)
@@ -106,19 +112,27 @@ def bytes_to_blocks(
         # If the instruction is a jump instruction, update it's arg with the
         # block offset, instead of instruction offset
         if isinstance(instruction.arg, Jump):
-            instruction.arg.target = targets.index(instruction.arg.target)
+            instruction = replace(
+                instruction,
+                arg=replace(
+                    instruction.arg,
+                    target=targets.index(instruction.arg.target),
+                ),
+            )
         block.append(instruction)
 
-    additional_names = {
-        i: name for i, name in enumerate(names) if name not in found_names
-    }
-    additional_constants = {
-        i: constant
+    additional_names = tuple(
+        AdditionalName(name, i)
+        for i, name in enumerate(names)
+        if name not in found_names
+    )
+    additional_constants = tuple(
+        AdditionalConstant(constant, i)
         for i, constant in enumerate(constants)
         if i not in found_constant_indices
-    }
+    )
     return (
-        {i: block for i, block in enumerate(blocks)},
+        tuple(tuple(instruction for instruction in block) for block in blocks),
         additional_names,
         additional_constants,
     )
@@ -126,8 +140,8 @@ def bytes_to_blocks(
 
 def blocks_to_bytes(
     blocks: Blocks,
-    additional_names: dict[int, str],
-    additional_consts: dict[int, ConstantDataType],
+    additional_names: AdditionalNames,
+    additional_consts: AdditionalConstants,
     block_type: BlockType,
 ) -> Tuple[bytes, LineMapping, tuple[str, ...], tuple[ConstantDataType, ...]]:
     from . import FunctionBlock
@@ -152,7 +166,7 @@ def blocks_to_bytes(
     constant_final_positions: dict[int, int] = {}
 
     # If it is a function block, we start with the docstring
-    if isinstance(block_type, FunctionBlock) and block_type.docstring_in_consts:
+    if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
         constants.append(block_type.docstring)
         constant_final_positions[0] = 0
 
@@ -161,7 +175,7 @@ def blocks_to_bytes(
 
         current_instruction_offset = 0
         # First go through and update all the instruction blocks
-        for block_index, block in blocks.items():
+        for block_index, block in enumerate(blocks):
             block_index_to_instruction_offset[block_index] = current_instruction_offset
             for instruction_index, instruction in enumerate(block):
                 if (block_index, instruction_index) in args:
@@ -169,6 +183,7 @@ def blocks_to_bytes(
                 else:
                     arg_value = from_arg(
                         instruction.arg,
+                        block_type,
                         names,
                         name_final_positions,
                         constants,
@@ -181,7 +196,7 @@ def blocks_to_bytes(
         # change the number of instructions needed for the arg, repeat
         changed_instruction_lengths = False
         current_instruction_offset = 0
-        for block_index, block in blocks.items():
+        for block_index, block in enumerate(blocks):
             for instruction_index, instruction in enumerate(block):
                 arg = instruction.arg
                 arg_value = args[block_index, instruction_index]
@@ -209,7 +224,8 @@ def blocks_to_bytes(
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
     # Add additional names to the names and add final positions
-    for i, name in additional_names.items():
+    for additional_name in additional_names:
+        i, name = additional_name.index, additional_name.name
         names.append(name)
         name_final_positions[i] = len(names) - 1
 
@@ -219,7 +235,8 @@ def blocks_to_bytes(
     ]
 
     # Add additional consts to the constants and add final positions
-    for i, constant in additional_consts.items():
+    for additional_constant in additional_consts:
+        i, constant = additional_constant.index, additional_constant.constant
         constants.append(constant)
         constant_final_positions[i] = len(constants) - 1
 
@@ -231,15 +248,15 @@ def blocks_to_bytes(
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
-    for block_index, block in blocks.items():
+    for block_index, block in enumerate(blocks):
         for instruction_index, instruction in enumerate(block):
             offset = len(bytes_)
 
             line_mapping.offset_to_line[offset] = instruction.line_number
             if instruction._line_offsets_override:
-                line_mapping.offset_to_additional_line_offsets[
-                    offset
-                ] = instruction._line_offsets_override
+                line_mapping.offset_to_additional_line_offsets[offset] = list(
+                    instruction._line_offsets_override
+                )
 
             arg_value = args[block_index, instruction_index]
             n_args = instruction._n_args_override or _instrsize(arg_value)
@@ -288,11 +305,14 @@ def to_arg(
 
 def from_arg(
     arg: Arg,
+    block_type: BlockType,
     names: list[str],
     name_final_positions: dict[int, int],
     constants: list[ConstantDataType],
     constants_final_positions: dict[int, int],
 ) -> int:
+    from . import FunctionBlock
+
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
@@ -304,6 +324,25 @@ def from_arg(
         name_final_positions[final_index] = index
         return final_index
     if isinstance(arg, Constant):
+
+        # If this is the first index, and we have a docstring which is None,
+        # and this value is a string, prepend a None instead of a string
+        # so that this value is not used as a docstring.
+        # This is needed to preserve the behavior for functions which don't have
+        # a docstring after normalizing, otherwise, we would eliminate the None
+        # const, because it is unused, and then fail to re-add it.
+        # We also don't want to uncoditionally use the docstring as the first argument,
+        # because list comprehensions don't do this.
+        docstring_is_none = (
+            isinstance(block_type, FunctionBlock) and block_type.docstring is None
+        )
+        first_const = not constants
+        arg_is_string = isinstance(arg.value, str)
+        no_override = arg._index_override is None
+        if docstring_is_none and first_const and arg_is_string and no_override:
+            constants.append(None)
+            constants_final_positions[0] = 0
+
         if arg.value not in constants:
             constants.append(arg.value)
         index = constants.index(arg.value)
@@ -318,7 +357,7 @@ def verify_block(blocks: Blocks) -> None:
     Verify that the blocks are valid, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in blocks.values():
+    for block in blocks:
         assert block, "Block is empty"
         for instruction in block:
             arg = instruction.arg
@@ -326,17 +365,16 @@ def verify_block(blocks: Blocks) -> None:
                 assert arg.target in range(len(blocks)), "Jump target is out of range"
 
 
-def normalize_blocks(blocks: Blocks) -> None:
+@normalize.register
+def _normalize_blocks(blocks: tuple) -> tuple:
     """
     Normalize the blocks, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in blocks.values():
-        for instruction in block:
-            instruction._normalize()
+    return tuple(map(normalize, blocks))
 
 
-@dataclass
+@dataclass(frozen=True)
 class Instruction(DataclassHideDefault):
     # The name of the instruction
     name: str = field(metadata={"positional": True})
@@ -358,15 +396,20 @@ class Instruction(DataclassHideDefault):
     # Unneccessary to preserve line semantics, but needed to preserve isomoprhic
     # byte-for-byte mapping
     # Only need in Python < 3.10
-    _line_offsets_override: list[int] = field(default_factory=list)
-
-    def _normalize(self) -> None:
-        self._n_args_override = None
-        self._line_offsets_override = []
-        normalize_arg(self.arg)
+    _line_offsets_override: tuple[int, ...] = field(default=tuple())
 
 
-@dataclass
+@normalize.register
+def normalize_instruction(instruction: Instruction) -> Instruction:
+    return replace(
+        instruction,
+        _n_args_override=None,
+        _line_offsets_override=tuple(),
+        arg=normalize(instruction.arg),
+    )
+
+
+@dataclass(frozen=True)
 class Jump(DataclassHideDefault):
     # The block index of the target
     target: int = field(metadata={"positional": True})
@@ -374,7 +417,7 @@ class Jump(DataclassHideDefault):
     relative: bool = field(default=False)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Name(DataclassHideDefault):
     """
     A name argument.
@@ -387,7 +430,7 @@ class Name(DataclassHideDefault):
     _index_override: Optional[int] = field(default=None)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Constant(DataclassHideDefault):
     """
     A constant argument.
@@ -408,13 +451,42 @@ class Constant(DataclassHideDefault):
 Arg = Union[int, Jump, Name, Constant]
 
 
-def normalize_arg(arg: Arg) -> None:
-    if isinstance(arg, (Name, Constant)):
-        arg._index_override = None
+@normalize.register
+def _normalize_arg_constant(arg: Constant) -> Constant:
+    return replace(arg, _index_override=None, value=normalize(arg.value))
 
 
-# dict mapping block offset to list of instructions in the block
-Blocks = Dict[int, List[Instruction]]
+@normalize.register
+def _normalize_arg_name(arg: Name) -> Name:
+    return replace(arg, _index_override=None)
+
+
+# tuple of blocks, each block is a list of instructions. Blocks are
+Blocks = Tuple[Tuple[Instruction, ...], ...]
+
+
+@dataclass(frozen=True)
+class AdditionalName(DataclassHideDefault):
+    """
+    An additional name argument, that was not used in the instructions
+    """
+
+    name: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class AdditionalConstant(DataclassHideDefault):
+    """
+    An additional name argument, that was not used in the instructions
+    """
+
+    constant: ConstantDataType = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+AdditionalNames = Tuple[AdditionalName, ...]
+AdditionalConstants = Tuple[AdditionalConstant, ...]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069

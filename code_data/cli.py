@@ -9,6 +9,8 @@ from typing import Optional, cast
 from rich.console import Console
 from rich.syntax import Syntax
 
+from code_data.normalize import normalize
+
 from . import from_code_data, to_code_data
 
 __all__ = ["main"]
@@ -27,6 +29,11 @@ parser.add_argument(
     help="print Python's dis analysis after round tripping to code-data, for testing",
 )
 parser.add_argument("--source", action="store_true", help="print the source code")
+parser.add_argument(
+    "--no-normalize",
+    action="store_true",
+    help="don't normalize code data before printing",
+)
 
 
 # TODO: #51 Add tests for CLI
@@ -35,7 +42,7 @@ def main():
     Parse the CLI commands and print the code data.
     """
     args = parser.parse_args()
-    file, cmd, mod, eval_, show_dis, show_source, show_dis_after = (
+    file, cmd, mod, eval_, show_dis, show_source, show_dis_after, no_normalize = (
         args.file,
         args.c,
         args.m,
@@ -43,6 +50,7 @@ def main():
         args.dis,
         args.source,
         args.dis_after,
+        args.no_normalize,
     )
 
     if len(list(filter(None, [file, cmd, mod, eval_]))) != 1:
@@ -74,9 +82,9 @@ def main():
     if show_dis:
         dis.dis(code)
     code_data = to_code_data(code)
-    code_data.normalize()
+    if not no_normalize:
+        code_data = normalize(code_data)
     console.print(code_data)
     if show_dis_after:
         res = from_code_data(code_data)
         dis.dis(res)
-        console.print(to_code_data(res))

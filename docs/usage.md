@@ -78,7 +78,7 @@ Let's try to change the additions to subtractions!
 ```{code-cell}
 from dataclasses import replace
 
-for block in code_data.blocks.values():
+for block in code_data.blocks:
     for instruction in block:
         if instruction.name == "BINARY_ADD":
             instruction.name = "BINARY_SUBTRACT"

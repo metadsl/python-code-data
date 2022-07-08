@@ -6,26 +6,26 @@ from __future__ import annotations
 
 import dis
 import enum
-from typing import Set
+from typing import FrozenSet
 
 import __future__  # isort:skip
 
 
 __all__ = ["FlagsData", "to_flags_data", "from_flags_data"]
 
-FlagsData = Set[str]
+FlagsData = FrozenSet[str]
 
 
 def to_flags_data(flags: int) -> FlagsData:
-    flags_data: FlagsData = set()
+    flags_data: set[str] = set()
     if not flags:
-        return flags_data
+        return frozenset(flags_data)
     # Iterate through all flags, raising an exception if we hit any unknown ones
     for f in enum._decompose(_CodeFlag, flags)[0]:  # type: ignore
         if f not in _CodeFlag:
             raise ValueError(f"Flag {f} is not a known flag")
         flags_data.add(f.name)
-    return flags_data
+    return frozenset(flags_data)
 
 
 def from_flags_data(flags_data: FlagsData) -> int:
