@@ -103,6 +103,8 @@ class CodeData(DataclassHideDefault):
 
     def _verify(self) -> None:
         verify_block(self.blocks)
+        # Verify hashable
+        hash(self)
 
 
 @normalize.register
