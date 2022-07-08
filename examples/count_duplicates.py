@@ -11,11 +11,11 @@ from code_data import CodeData, to_code_data
 from code_data.blocks import Constant
 from code_data.module_codes import module_codes
 
-code_counts = collections.Counter()
+code_counts = collections.Counter[int]()
 
 
 def traverse(code_data: CodeData) -> None:
-    code_data_counts = collections.Counter()
+    code_data_counts = collections.Counter[CodeData]()
     for block in code_data.blocks:
         for instruction in block:
             if isinstance(instruction.arg, Constant) and isinstance(
