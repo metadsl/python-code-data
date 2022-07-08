@@ -14,6 +14,8 @@ import pytest
 import rich.progress
 from hypothesis import HealthCheck, given, settings
 
+from code_data import normalize
+
 from . import CodeData, from_code_data, to_code_data
 from .line_mapping import (
     USE_LINETABLE,
@@ -203,10 +205,10 @@ def verify_normalize(code_data: CodeData) -> None:
     """
     Verify that after normalizing, going to/from bytecode produces the same code_data.
     """
-    code_data.normalize()
+    code_data = normalize(code_data)
     normalized_code = from_code_data(code_data)
     new_code_data = to_code_data(normalized_code)
-    new_code_data.normalize()
+    new_code_data = normalize(new_code_data)
     assert code_data == new_code_data
 
 

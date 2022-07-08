@@ -120,9 +120,9 @@ class LineMapping:
         Add an additional line to the mapping.
         """
         self.offset_to_line[len_code] = additional_line.line
-        self.offset_to_additional_line_offsets[
-            len_code
-        ] = additional_line.additional_offsets
+        self.offset_to_additional_line_offsets[len_code] = list(
+            additional_line.additional_offsets
+        )
 
     def set_first_line(self, first_line: int) -> Optional[int]:
         """
