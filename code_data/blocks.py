@@ -8,11 +8,12 @@ from __future__ import annotations
 import ctypes
 import dis
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
 
 from .dataclass_hide_default import DataclassHideDefault
 from .line_mapping import LineMapping
+from .normalize import normalize
 
 if TYPE_CHECKING:
     from . import BlockType, ConstantDataType
@@ -85,8 +86,8 @@ def bytes_to_blocks(
             arg=processed_arg,
             _n_args_override=n_args_override,
             line_number=line_mapping.offset_to_line.pop(offset),
-            _line_offsets_override=line_mapping.offset_to_additional_line_offsets.pop(
-                offset, []
+            _line_offsets_override=tuple(
+                line_mapping.offset_to_additional_line_offsets.pop(offset, [])
             ),
         )
         offsets_and_instruction.append((offset, instruction))
@@ -111,7 +112,13 @@ def bytes_to_blocks(
         # If the instruction is a jump instruction, update it's arg with the
         # block offset, instead of instruction offset
         if isinstance(instruction.arg, Jump):
-            instruction.arg.target = targets.index(instruction.arg.target)
+            instruction = replace(
+                instruction,
+                arg=replace(
+                    instruction.arg,
+                    target=targets.index(instruction.arg.target),
+                ),
+            )
         block.append(instruction)
 
     additional_names = tuple(
@@ -246,9 +253,9 @@ def blocks_to_bytes(
 
             line_mapping.offset_to_line[offset] = instruction.line_number
             if instruction._line_offsets_override:
-                line_mapping.offset_to_additional_line_offsets[
-                    offset
-                ] = instruction._line_offsets_override
+                line_mapping.offset_to_additional_line_offsets[offset] = list(
+                    instruction._line_offsets_override
+                )
 
             arg_value = args[block_index, instruction_index]
             n_args = instruction._n_args_override or _instrsize(arg_value)
@@ -335,17 +342,16 @@ def verify_block(blocks: Blocks) -> None:
                 assert arg.target in range(len(blocks)), "Jump target is out of range"
 
 
-def normalize_blocks(blocks: Blocks) -> None:
+@normalize.register
+def _normalize_blocks(blocks: tuple) -> tuple:
     """
     Normalize the blocks, by making sure every
     instruction that jumps can find it's block.
     """
-    for block in blocks:
-        for instruction in block:
-            instruction._normalize()
+    return tuple(map(normalize, blocks))
 
 
-@dataclass
+@dataclass(frozen=True)
 class Instruction(DataclassHideDefault):
     # The name of the instruction
     name: str = field(metadata={"positional": True})
@@ -367,15 +373,20 @@ class Instruction(DataclassHideDefault):
     # Unneccessary to preserve line semantics, but needed to preserve isomoprhic
     # byte-for-byte mapping
     # Only need in Python < 3.10
-    _line_offsets_override: list[int] = field(default_factory=list)
-
-    def _normalize(self) -> None:
-        self._n_args_override = None
-        self._line_offsets_override = []
-        normalize_arg(self.arg)
+    _line_offsets_override: tuple[int, ...] = field(default=tuple())
 
 
-@dataclass
+@normalize.register
+def normalize_instruction(instruction: Instruction) -> Instruction:
+    return replace(
+        instruction,
+        _n_args_override=None,
+        _line_offsets_override=tuple(),
+        arg=normalize(instruction.arg),
+    )
+
+
+@dataclass(frozen=True)
 class Jump(DataclassHideDefault):
     # The block index of the target
     target: int = field(metadata={"positional": True})
@@ -383,7 +394,7 @@ class Jump(DataclassHideDefault):
     relative: bool = field(default=False)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Name(DataclassHideDefault):
     """
     A name argument.
@@ -396,7 +407,7 @@ class Name(DataclassHideDefault):
     _index_override: Optional[int] = field(default=None)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Constant(DataclassHideDefault):
     """
     A constant argument.
@@ -417,20 +428,21 @@ class Constant(DataclassHideDefault):
 Arg = Union[int, Jump, Name, Constant]
 
 
-def normalize_arg(arg: Arg) -> None:
-    from . import CodeData
+@normalize.register
+def _normalize_arg_constant(arg: Constant) -> Constant:
+    return replace(arg, _index_override=None, value=normalize(arg.value))
 
-    if isinstance(arg, (Name, Constant)):
-        arg._index_override = None
-        if isinstance(arg, Constant) and isinstance(arg.value, CodeData):
-            arg.value.normalize()
+
+@normalize.register
+def _normalize_arg_name(arg: Name) -> Name:
+    return replace(arg, _index_override=None)
 
 
 # tuple of blocks, each block is a list of instructions. Blocks are
 Blocks = Tuple[Tuple[Instruction, ...], ...]
 
 
-@dataclass
+@dataclass(frozen=True)
 class AdditionalName(DataclassHideDefault):
     """
     An additional name argument, that was not used in the instructions
@@ -440,7 +452,7 @@ class AdditionalName(DataclassHideDefault):
     index: int = field(metadata={"positional": True})
 
 
-@dataclass
+@dataclass(frozen=True)
 class AdditionalConstant(DataclassHideDefault):
     """
     An additional name argument, that was not used in the instructions

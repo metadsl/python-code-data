@@ -9,6 +9,8 @@ from typing import Optional, cast
 from rich.console import Console
 from rich.syntax import Syntax
 
+from code_data.normalize import normalize
+
 from . import from_code_data, to_code_data
 
 __all__ = ["main"]
@@ -74,9 +76,8 @@ def main():
     if show_dis:
         dis.dis(code)
     code_data = to_code_data(code)
-    code_data.normalize()
+    code_data = normalize(code_data)
     console.print(code_data)
     if show_dis_after:
         res = from_code_data(code_data)
         dis.dis(res)
-        console.print(to_code_data(res))

@@ -4,9 +4,11 @@ Transform Python code objects into data, and vice versa.
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import CodeType
 from typing import FrozenSet, Optional, Tuple, Union
+
+from code_data.normalize import normalize
 
 # Only introduced in Python 3.10
 # https://github.com/python/cpython/pull/22336
@@ -19,7 +21,6 @@ from .blocks import (
     Blocks,
     blocks_to_bytes,
     bytes_to_blocks,
-    normalize_blocks,
     verify_block,
 )
 from .dataclass_hide_default import DataclassHideDefault
@@ -103,17 +104,17 @@ class CodeData(DataclassHideDefault):
     def _verify(self) -> None:
         verify_block(self.blocks)
 
-    def normalize(self) -> None:
-        """
-        Removes all fields from the bytecode that do not effect its semantics, but only
-        its serialization. This includes things like the order of the `co_consts` array,
-        the number of extended args for some bytecodes, etc.
-        """
-        self._additional_constants = tuple()
-        self._additional_names = tuple()
-        self._additional_line = None
-        self._first_line_number_override = None
-        normalize_blocks(self.blocks)
+
+@normalize.register
+def _normalize_code_data(code_data: CodeData) -> CodeData:
+    return replace(
+        code_data,
+        blocks=normalize(code_data.blocks),
+        _additional_constants=tuple(),
+        _additional_names=tuple(),
+        _additional_line=None,
+        _first_line_number_override=None,
+    )
 
 
 # Functions should have both of these flags set
@@ -258,7 +259,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
 BlockType = Union["FunctionBlock", None]
 
 
-@dataclass
+@dataclass(frozen=True)
 class FunctionBlock(DataclassHideDefault):
     docstring: Optional[str] = field(default=None)
     # Set to false if the docstring is not saved as a constant. In this case, it
