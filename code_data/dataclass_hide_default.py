@@ -34,12 +34,5 @@ class DataclassHideDefault:
             value = getattr(self, f.name)
             if value == default:
                 continue
-            if (
-                f.metadata.get("positional", False)
-                # Don't use tuple as positional args
-                # https://github.com/Textualize/rich/pull/2379
-                and not isinstance(value, tuple)
-            ):
-                yield value
-            else:
-                yield name, value
+            positional = f.metadata.get("positional", False)
+            yield None if positional else name, value
