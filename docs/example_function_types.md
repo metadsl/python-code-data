@@ -33,7 +33,7 @@ ones at the top level:
 ```{code-cell}
 from code_data import CodeData
 
-all_code_data = {code_data for _, _, code in module_codes for code_data in CodeData.from_code(code)}
+all_code_data = {code_data for _, _, code in module_codes for code_data in CodeData.from_code(code).all_code_data()}
 print(f"We have loaded {len(all_code_data)} code data objects")
 ```
 

@@ -125,12 +125,19 @@ class CodeData(DataclassHideDefault):
         Iterates through all the code data which are included,
         by processing the arguments recursively.
         """
-        yield self
         for block in self.blocks:
             for instruction in block:
                 arg = instruction.arg
                 if isinstance(arg, Constant) and isinstance(arg.value, CodeData):
-                    yield from arg.value
+                    yield arg.value
+
+    def all_code_data(self) -> Iterator[CodeData]:
+        """
+        Return all the code data recursively, including itself.
+        """
+        yield self
+        for code_data in self:
+            yield from code_data.all_code_data()
 
 
 FlagsData = FrozenSet[str]

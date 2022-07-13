@@ -134,9 +134,8 @@ counts_per_level = defaultdict(lambda: 0)
 def process_code_data(code_data: CodeData, level: int) -> None:
     flags_per_level[level].update(code_data.flags)
     counts_per_level[level] += 1
-    for c in code_data.consts:
-        if isinstance(c, CodeData):
-            process_code_data(c, level + 1)
+    for c in code_data:
+        process_code_data(c, level + 1)
 
 for code_data in all_code_data:
     process_code_data(code_data, 0)
@@ -158,7 +157,7 @@ load a string from Python code to eval it first, which is useful for generating
 test cases on the CLI of program strings.
 
 ```{code-cell}
-! python-code-data
+! python-code-data -h
 ```
 
 ```{code-cell}
