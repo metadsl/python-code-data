@@ -31,6 +31,7 @@ def args_from_input(input: ArgsInput) -> tuple[Args, FlagsData]:
     )
     if "VARARGS" in flags_data:
         var_positional, varnames = varnames[0], varnames[1:]
+        flags_data -= {"VARARGS"}
     else:
         var_positional = None
 
@@ -40,6 +41,7 @@ def args_from_input(input: ArgsInput) -> tuple[Args, FlagsData]:
     )
     if "VARKEYWORDS" in flags_data:
         var_keyword, varnames = varnames[0], varnames[1:]
+        flags_data -= {"VARKEYWORDS"}
     else:
         var_keyword = None
 
