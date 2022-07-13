@@ -11,21 +11,26 @@ import sys
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
 
+from .args import Args
+from .constants import ConstantDataType
 from .dataclass_hide_default import DataclassHideDefault
 from .line_mapping import LineMapping
 from .normalize import normalize
 
 if TYPE_CHECKING:
-    from . import BlockType, ConstantDataType
+    # Circular import
+    from . import BlockType
 
 
 def bytes_to_blocks(
     b: bytes,
     line_mapping: LineMapping,
     names: tuple[str, ...],
+    varnames: tuple[str, ...],
     constants: tuple[ConstantDataType, ...],
     block_type: BlockType,
-) -> tuple[Blocks, AdditionalNames, AdditionalConstants]:
+    args: Args,
+) -> tuple[Blocks, AdditionalNames, AdditionalVarnames, AdditionalConstants]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -42,6 +47,10 @@ def bytes_to_blocks(
     # For recording what names we have found to understand the order of the names
     found_names: list[str] = []
 
+    # We count all the arg names as "found", since we will always preserve them in the
+    # args
+    found_varnames: list[str] = list(args.names())
+
     # For recording what constants we have found to understand the order of the
     # constants
     found_constants: list[ConstantDataType] = []
@@ -51,6 +60,7 @@ def bytes_to_blocks(
     # fine as long as names aren't duplicated, which they don't seem to be in the
     # same way as constants
     found_constant_indices: set[int] = set()
+
     # If we have a function block and a docstring, the first constant is the docstring.
     if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
         found_constants.append(block_type.docstring)
@@ -66,6 +76,8 @@ def bytes_to_blocks(
             next_offset,
             names,
             found_names,
+            varnames,
+            found_varnames,
             constants,
             found_constants,
             found_constant_indices,
@@ -126,6 +138,11 @@ def bytes_to_blocks(
         for i, name in enumerate(names)
         if name not in found_names
     )
+    additional_varnames = tuple(
+        AdditionalVarname(name, i)
+        for i, name in enumerate(varnames)
+        if name not in found_varnames
+    )
     additional_constants = tuple(
         AdditionalConstant(constant, i)
         for i, constant in enumerate(constants)
@@ -134,6 +151,7 @@ def bytes_to_blocks(
     return (
         tuple(tuple(instruction for instruction in block) for block in blocks),
         additional_names,
+        additional_varnames,
         additional_constants,
     )
 
@@ -141,9 +159,13 @@ def bytes_to_blocks(
 def blocks_to_bytes(
     blocks: Blocks,
     additional_names: AdditionalNames,
+    additional_varnames: AdditionalVarnames,
     additional_consts: AdditionalConstants,
     block_type: BlockType,
-) -> Tuple[bytes, LineMapping, tuple[str, ...], tuple[ConstantDataType, ...]]:
+    function_args: Args,
+) -> Tuple[
+    bytes, LineMapping, tuple[str, ...], tuple[str, ...], tuple[ConstantDataType, ...]
+]:
     from . import FunctionBlock
 
     # First compute mapping from block to offset
@@ -156,9 +178,11 @@ def blocks_to_bytes(
 
     # List of names we have collected from the instructions
     names: list[str] = []
-
     # Mapping of name index to final name positions
     name_final_positions: dict[int, int] = {}
+
+    varnames: list[str] = list(function_args.names())
+    varname_final_positions: dict[int, int] = {i: i for i in range(len(varnames))}
 
     # List of constants we have collected from the instructions
     constants: list[ConstantDataType] = []
@@ -186,6 +210,8 @@ def blocks_to_bytes(
                         block_type,
                         names,
                         name_final_positions,
+                        varnames,
+                        varname_final_positions,
                         constants,
                         constant_final_positions,
                     )
@@ -228,10 +254,18 @@ def blocks_to_bytes(
         i, name = additional_name.index, additional_name.name
         names.append(name)
         name_final_positions[i] = len(names) - 1
-
     # Sort positions by final position
     names = [
         names[i] for _, i in sorted(name_final_positions.items(), key=lambda x: x[0])
+    ]
+
+    for additional_varname in additional_varnames:
+        i, name = additional_varname.index, additional_varname.varname
+        varnames.append(name)
+        varname_final_positions[i] = len(varnames) - 1
+    varnames = [
+        varnames[i]
+        for _, i in sorted(varname_final_positions.items(), key=lambda x: x[0])
     ]
 
     # Add additional consts to the constants and add final positions
@@ -269,7 +303,7 @@ def blocks_to_bytes(
                 )
                 bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
-    return bytes(bytes_), line_mapping, tuple(names), tuple(constants)
+    return bytes(bytes_), line_mapping, tuple(names), tuple(varnames), tuple(constants)
 
 
 def to_arg(
@@ -278,6 +312,8 @@ def to_arg(
     next_offset: int,
     names: tuple[str, ...],
     found_names: list[str],
+    varnames: tuple[str, ...],
+    found_varnames: list[str],
     consts: tuple[ConstantDataType, ...],
     found_constants: list[ConstantDataType],
     found_constant_indices: set[int],
@@ -293,6 +329,13 @@ def to_arg(
             found_names.append(name)
         wrong_position = found_names.index(name) != arg
         return Name(name, arg if wrong_position else None)
+    elif opcode in dis.haslocal:
+        varname = varnames[arg]
+        # Check if its the proper position
+        if varname not in found_varnames:
+            found_varnames.append(varname)
+        wrong_position = found_varnames.index(varname) != arg
+        return Varname(varname, arg if wrong_position else None)
     elif opcode in dis.hasconst:
         found_constant_indices.add(arg)
         constant = consts[arg]
@@ -308,6 +351,8 @@ def from_arg(
     block_type: BlockType,
     names: list[str],
     name_final_positions: dict[int, int],
+    varnames: list[str],
+    varnames_final_positions: dict[int, int],
     constants: list[ConstantDataType],
     constants_final_positions: dict[int, int],
 ) -> int:
@@ -322,6 +367,13 @@ def from_arg(
         index = names.index(arg.name)
         final_index = index if arg._index_override is None else arg._index_override
         name_final_positions[final_index] = index
+        return final_index
+    if isinstance(arg, Varname):
+        if arg.varname not in varnames:
+            varnames.append(arg.varname)
+        index = varnames.index(arg.varname)
+        final_index = index if arg._index_override is None else arg._index_override
+        varnames_final_positions[final_index] = index
         return final_index
     if isinstance(arg, Constant):
 
@@ -431,6 +483,19 @@ class Name(DataclassHideDefault):
 
 
 @dataclass(frozen=True)
+class Varname(DataclassHideDefault):
+    """
+    A varname argument.
+    """
+
+    varname: str = field(metadata={"positional": True})
+
+    # Optional override for the position of the name, if it is not ordered by occurance
+    # in the code.
+    _index_override: Optional[int] = field(default=None)
+
+
+@dataclass(frozen=True)
 class Constant(DataclassHideDefault):
     """
     A constant argument.
@@ -448,7 +513,7 @@ class Constant(DataclassHideDefault):
 # 7. format value
 # 8. Generator kind
 
-Arg = Union[int, Jump, Name, Constant]
+Arg = Union[int, Jump, Name, Varname, Constant]
 
 
 @normalize.register
@@ -456,13 +521,16 @@ def _normalize_arg_constant(arg: Constant) -> Constant:
     return replace(arg, _index_override=None, value=normalize(arg.value))
 
 
-@normalize.register
-def _normalize_arg_name(arg: Name) -> Name:
+@normalize.register(Name)
+@normalize.register(Varname)
+def _normalize_arg(arg: Union[Name, Varname]) -> Union[Name, Varname]:
     return replace(arg, _index_override=None)
 
 
 # tuple of blocks, each block is a list of instructions. Blocks are
 Blocks = Tuple[Tuple[Instruction, ...], ...]
+
+# TODO: Possibly replace all these with `_additional_args` and use the args?
 
 
 @dataclass(frozen=True)
@@ -485,8 +553,19 @@ class AdditionalConstant(DataclassHideDefault):
     index: int = field(metadata={"positional": True})
 
 
+@dataclass(frozen=True)
+class AdditionalVarname(DataclassHideDefault):
+    """
+    An additional var name argument, that was not used in the instructions
+    """
+
+    varname: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
 AdditionalNames = Tuple[AdditionalName, ...]
 AdditionalConstants = Tuple[AdditionalConstant, ...]
+AdditionalVarnames = Tuple[AdditionalVarname, ...]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069

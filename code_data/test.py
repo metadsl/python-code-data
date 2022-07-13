@@ -14,9 +14,7 @@ import pytest
 import rich.progress
 from hypothesis import HealthCheck, given, settings
 
-from code_data import normalize
-
-from . import CodeData, from_code_data, to_code_data
+from . import CodeData, from_code_data, normalize, to_code_data
 from .line_mapping import (
     USE_LINETABLE,
     LineMapping,
@@ -55,7 +53,7 @@ EXAMPLES = (
         pytest.param("f(\n1)", id="negative line jump"),
         pytest.param("f(" + "\n" * 256 + "1)", id="long negative jump"),
         pytest.param(
-            r"""def _():
+            """def _():
     return
     return
 """,
