@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 Count how many names are not looked at.
 """
@@ -97,7 +98,7 @@ code = next(has_unused_names)
 def fn():
     if False:
         a = 100
-        z = a  # flake8: noqa
+        z = a
 
 
 print(used_all_local_names(fn.__code__))
