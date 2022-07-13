@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import collections
 
-from code_data import CodeData, CodeData.from_code
+from code_data import CodeData
 from code_data.blocks import Constant
 from code_data.module_codes import module_codes
 
