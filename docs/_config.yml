@@ -32,17 +32,24 @@ sphinx:
   config:
     # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
     # autoapi_type: python
+    # # autoapi_python_use_implicit_namespaces: true
     # autoapi_dirs: [../code_data]
-    # autoapi_ignore: ["*_test.py"]
+    # autoapi_ignore: ["*_test.py", "*/test_minimized/*"]
+    # autoapi_file_patterns:
+    #   - "__init__.py"
+    # autoapi_add_toctree_entry: false
     # autoapi_keep_files: true
     # https://sphinx-autoapi.readthedocs.io/en/latest/how_to.html#how-to-include-type-annotations-as-types-in-rendered-docstrings
-    autodoc_typehints: description
-    # https://github.com/tox-dev/sphinx-autodoc-typehints#options
-    # always_document_param_types: true
-    # typehints_defaults: comma
 
-    autodoc_type_aliases:
-      ConstantDataType: code_data.ConstantDataType
+    autodoc_typehints: description
+    # # https://github.com/tox-dev/sphinx-autodoc-typehints#options
+    # # always_document_param_types: true
+    # # typehints_defaults: comma
+
+    autodoc_member_order: "bysource"
+    # autodoc_type_aliases:
+    #   ConstantValue: code_data.ConstantValue
+    # EllipsisType: types.EllipsisType
     intersphinx_mapping:
       python:
         - https://docs.python.org/3

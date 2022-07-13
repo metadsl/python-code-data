@@ -1,40 +1,43 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from types import CodeType
-from typing import TYPE_CHECKING, FrozenSet, Union
 
-from .dataclass_hide_default import DataclassHideDefault
+from . import (
+    ConstantBool,
+    ConstantComplex,
+    ConstantEllipsis,
+    ConstantFloat,
+    ConstantInt,
+    ConstantSet,
+    ConstantTuple,
+    ConstantValue,
+    InnerConstant,
+)
 
-if TYPE_CHECKING:
-    # Only available 3.9+
-    from types import EllipsisType
-
-    # Circular reference
-    from . import CodeData
-
-ConstantDataType = Union[
-    "ConstantInt",
-    str,
-    "ConstantFloat",
-    None,
-    "ConstantBool",
-    bytes,
-    "EllipsisType",
-    "CodeData",
-    "ConstantComplex",
-    "ConstantSet",
-    "ConstantTuple",
-]
+__all__ = ["to_constant", "from_constant", "InnerConstant"]
 
 
-def to_code_constant(value: object) -> ConstantDataType:
-    from . import to_code_data
+def to_constant(value: object) -> ConstantValue:
+    from .code_data import CodeData
 
     if isinstance(value, CodeType):
-        return to_code_data(value)
-    if isinstance(value, (str, type(None), bytes, type(...))):
+        return CodeData.from_code(value)
+    return to_inner_constant(value)
+
+
+def from_constant(value: ConstantValue) -> object:
+    from . import CodeData
+
+    if isinstance(value, CodeData):
+        return value.to_code()
+    return from_inner_constant(value)
+
+
+def to_inner_constant(value: object) -> InnerConstant:
+    if isinstance(value, (str, type(None), bytes)):
         return value
+    if isinstance(value, type(...)):
+        return ConstantEllipsis()
     if isinstance(value, bool):
         return ConstantBool(value)
     if isinstance(value, int):
@@ -44,66 +47,22 @@ def to_code_constant(value: object) -> ConstantDataType:
     if isinstance(value, complex):
         return ConstantComplex(value, is_neg_zero(value.real), is_neg_zero(value.imag))
     if isinstance(value, tuple):
-        return ConstantTuple(tuple(map(to_code_constant, value)))
+        return ConstantTuple(tuple(map(to_inner_constant, value)))
     if isinstance(value, frozenset):
-        return ConstantSet(frozenset(map(to_code_constant, value)))
+        return ConstantSet(frozenset(map(to_inner_constant, value)))
     raise NotImplementedError(f"Unsupported constant type: {type(value)}")
 
 
-def from_code_constant(value: ConstantDataType) -> object:
-    from . import CodeData, from_code_data
-
-    if isinstance(value, CodeData):
-        return from_code_data(value)
+def from_inner_constant(value: InnerConstant) -> object:
     if isinstance(value, ConstantTuple):
-        return tuple(map(from_code_constant, value.value))
+        return tuple(map(from_inner_constant, value.value))
     if isinstance(value, ConstantSet):
-        return frozenset(map(from_code_constant, value.value))
+        return frozenset(map(from_inner_constant, value.value))
     if isinstance(value, (ConstantBool, ConstantInt, ConstantFloat, ConstantComplex)):
         return value.value
+    if isinstance(value, ConstantEllipsis):
+        return ...
     return value
-
-
-# Wrap these in types, so that, say, bytecode with constants of 1
-# are not equal to bytecodes of constants of True.
-
-
-@dataclass(frozen=True)
-class ConstantBool(DataclassHideDefault):
-    value: bool = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantInt(DataclassHideDefault):
-    value: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantFloat(DataclassHideDefault):
-    value: float = field(metadata={"positional": True})
-    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
-    is_neg_zero: bool = field(default=False)
-
-
-@dataclass(frozen=True)
-class ConstantComplex(DataclassHideDefault):
-    value: complex = field(metadata={"positional": True})
-    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
-    real_is_neg_zero: bool = field(default=False)
-    imag_is_neg_zero: bool = field(default=False)
-
-
-# We need to wrap the data structures in dataclasses to be able to represent
-# them with MyPy, since it doesn't support recursive types
-# https://github.com/python/mypy/issues/731
-@dataclass(frozen=True)
-class ConstantTuple(DataclassHideDefault):
-    value: tuple[ConstantDataType, ...] = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantSet(DataclassHideDefault):
-    value: FrozenSet[ConstantDataType] = field(metadata={"positional": True})
 
 
 def is_neg_zero(value: float) -> bool:

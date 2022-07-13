@@ -43,7 +43,7 @@ def fn(x):
 
 
 # 3. Convert it to a dataclass!
-from code_data import to_code_data
+from code_data import CodeData
 
-to_code_data(fn.__code__)
+CodeData.from_code(fn.__code__)
 ```

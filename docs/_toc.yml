@@ -2,8 +2,11 @@ format: jb-book
 root: intro
 chapters:
   - file: usage
+    sections:
+      - file: example_function_types
   - file: background
   - file: faq
   - file: design
   - file: api
   - file: development
+  - file: learnings

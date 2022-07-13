@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import collections
 
-from code_data import CodeData, to_code_data
+from code_data import CodeData
 from code_data.blocks import Constant
 from code_data.module_codes import module_codes
 
@@ -32,6 +32,6 @@ def traverse(code_data: CodeData) -> None:
 print("Loading modules...")
 for name, _, code in module_codes():
     print(name)
-    traverse(to_code_data(code))
+    traverse(CodeData.from_code(code))
 
 print("Counts of duplicate code values", code_counts)

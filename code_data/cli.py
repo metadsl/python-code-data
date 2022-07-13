@@ -11,7 +11,7 @@ from rich.syntax import Syntax
 
 from code_data.normalize import normalize
 
-from . import from_code_data, to_code_data
+from . import CodeData
 
 __all__ = ["main"]
 
@@ -81,10 +81,10 @@ def main():
         console.print(Syntax(source, "python", line_numbers=True))
     if show_dis:
         dis.dis(code)
-    code_data = to_code_data(code)
+    code_data = CodeData.from_code(code)
     if not no_normalize:
         code_data = normalize(code_data)
     console.print(code_data)
     if show_dis_after:
-        res = from_code_data(code_data)
+        res = code_data.to_code()
         dis.dis(res)

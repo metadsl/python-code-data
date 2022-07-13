@@ -1,10 +1,6 @@
-# Learnings
+# Learnings about `CodeType`
 
 _I wanted to start collecting my learning about the code object, as I created this library. Unfortunately, I had this idea after I was mostly done, so it is by no means complete._
-
-## Python's Code object
-
-Fields:
 
 ## `co_varnames`
 
@@ -23,3 +19,11 @@ We cannot eliminate unused ones. That is actually [enforced during bytecode crea
 
 Mostly yes. The only place they don't get used is if they are optimized away, like in a `if False: ...` block. So we
 can safely remove all the unused varnames, which are not arguments.
+
+### Are all the code with arguments "functions"? i.e. do they have the `NEWLOCALS` and `OPTIMIZED` flags?
+
+Yes all code data with args are functions!
+
+## `co_freevars` and `co_cellvars`
+
+The list of free variables. It is accessed in the evaluation loop by `LOAD_CLOSURE`, `DELETE_CLOSURE`, and `STORE_CLOSURE`.
