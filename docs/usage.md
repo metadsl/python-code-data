@@ -106,9 +106,9 @@ our code analysis is isomporphic, meaning that when we convert to and from the
 code data, we should get back an equivalent code object.
 
 ```{code-cell}
-from code_data.module_codes import module_codes
+from code_data.module_codes import modules_codes_cached
 
-names_source_and_codes = list(module_codes())
+names_source_and_codes = modules_codes_cached()
 names_source_and_codes[:3]
 ```
 

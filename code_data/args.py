@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from dataclasses import dataclass, field
+from inspect import _ParameterKind
 from typing import Optional, Tuple
 
 from code_data.flags_data import FlagsData
@@ -8,6 +10,7 @@ from code_data.flags_data import FlagsData
 from .dataclass_hide_default import DataclassHideDefault
 
 
+# TODO: Rename to parameters?
 @dataclass(frozen=True)
 class Args(DataclassHideDefault):
     """
@@ -20,23 +23,36 @@ class Args(DataclassHideDefault):
     keyword_only: tuple[str, ...] = field(default=())
     var_keyword: Optional[str] = field(default=None)
 
-    def names(self) -> tuple[str, ...]:
+    def parameters(self) -> OrderedDict[str, _ParameterKind]:
         """
-        Returns the names of the args, in order.
+        Returns the names of the args, in order, mapping to their kind.
         """
-        return (
-            self.positional_only
-            + self.positional_or_keyword
-            + ((self.var_positional,) if self.var_positional else ())
-            + self.keyword_only
-            + ((self.var_keyword,) if self.var_keyword else ())
+        return OrderedDict(
+            (
+                *((n, _ParameterKind.POSITIONAL_ONLY) for n in self.positional_only),
+                *(
+                    (n, _ParameterKind.POSITIONAL_OR_KEYWORD)
+                    for n in self.positional_or_keyword
+                ),
+                *(
+                    ((self.var_positional, _ParameterKind.VAR_POSITIONAL),)
+                    if self.var_positional
+                    else ()
+                ),
+                *((n, _ParameterKind.KEYWORD_ONLY) for n in self.keyword_only),
+                *(
+                    ((self.var_keyword, _ParameterKind.VAR_KEYWORD),)
+                    if self.var_keyword
+                    else ()
+                ),
+            )
         )
 
     def __len__(self) -> int:
         """
         Returns the number of args
         """
-        return len(self.names())
+        return len(self.parameters())
 
     @classmethod
     def from_input(cls, input: ArgsInput) -> tuple[Args, FlagsData]:
@@ -94,7 +110,7 @@ class Args(DataclassHideDefault):
             argcount=len(self.positional_only) + len(self.positional_or_keyword),
             posonlyargcount=len(self.positional_only),
             kwonlyargcount=len(self.keyword_only),
-            varnames=self.names(),
+            varnames=tuple(self.parameters().keys()),
             flags_data=flags_data,
         )
 

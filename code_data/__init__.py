@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field, replace
 from types import CodeType
-from typing import Optional, Tuple, Union
+from typing import Generator, Iterable, Iterator, Optional, Tuple, Union
 
 from code_data.args import Args, ArgsInput
 
@@ -15,6 +15,7 @@ from .blocks import (
     AdditionalNames,
     AdditionalVarnames,
     Blocks,
+    Constant,
     blocks_to_bytes,
     bytes_to_blocks,
     verify_block,
@@ -96,6 +97,18 @@ class CodeData(DataclassHideDefault):
         # Verify hashable
         hash(self)
 
+    def __iter__(self) -> Iterator[CodeData]:
+        """
+        Iterates through all the code data which are included,
+        by processing the arguments recursively.
+        """
+        yield self
+        for block in self.blocks:
+            for instruction in block:
+                arg = instruction.arg
+                if isinstance(arg, Constant) and isinstance(arg.value, CodeData):
+                    yield from arg.value
+
 
 @normalize.register
 def _normalize_code_data(code_data: CodeData) -> CodeData:
@@ -149,7 +162,7 @@ def to_code_data(code: CodeType) -> CodeData:
     fn_flags = flags_data & FN_FLAGS
     if len(fn_flags) == 0:
         block_type = None
-        assert not args.names(), "if this isn't a function, it shouldn't have args"
+        assert not args, "if this isn't a function, it shouldn't have args"
     elif len(fn_flags) == 2:
         # Use the first const as a docstring if its a string
         # https://github.com/python/cpython/blob/da8be157f4e275c4c32b9199f1466ed7e52f62cf/Objects/funcobject.c#L33-L38

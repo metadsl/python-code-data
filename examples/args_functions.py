@@ -7,7 +7,6 @@ Check if all blocks with "args" are "functions".
 from __future__ import annotations
 
 import collections
-import dis
 import inspect
 import logging
 from types import CodeType

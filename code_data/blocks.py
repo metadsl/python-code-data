@@ -49,7 +49,7 @@ def bytes_to_blocks(
 
     # We count all the arg names as "found", since we will always preserve them in the
     # args
-    found_varnames: list[str] = list(args.names())
+    found_varnames: list[str] = list(args.parameters().keys())
 
     # For recording what constants we have found to understand the order of the
     # constants
@@ -181,7 +181,9 @@ def blocks_to_bytes(
     name_final_positions: dict[int, int] = {}
 
     varnames: list[str] = list(
-        block_type.args.names() if isinstance(block_type, FunctionBlock) else ()
+        block_type.args.parameters().keys()
+        if isinstance(block_type, FunctionBlock)
+        else ()
     )
     varname_final_positions: dict[int, int] = {i: i for i in range(len(varnames))}
 
