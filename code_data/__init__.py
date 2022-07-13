@@ -1,38 +1,28 @@
 """
 Transform Python code objects into data, and vice versa.
+
+TODO: Move all types here. Move all functions into other files. Make all things methods
+for external usage.
 """
 from __future__ import annotations
 
-import sys
-from dataclasses import dataclass, field, replace
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from inspect import _ParameterKind
 from types import CodeType
-from typing import Iterator, Optional, Tuple, Union
+from typing import FrozenSet, Iterator, Optional, Tuple, Union
 
-from code_data.args import Args, ArgsInput
-
-from .blocks import (
-    AdditionalConstants,
-    AdditionalNames,
-    AdditionalVarnames,
-    Blocks,
-    Constant,
-    blocks_to_bytes,
-    bytes_to_blocks,
-    verify_block,
-)
-from .constants import from_code_constant, to_code_constant
 from .dataclass_hide_default import DataclassHideDefault
-from .flags_data import FlagsData, from_flags_data, to_flags_data
-from .line_mapping import AdditionalLine, from_line_mapping, to_line_mapping
-from .normalize import normalize
 
-__all__ = ["CodeData", "to_code_data", "from_code_data"]
 __version__ = "0.0.0"
 
 
 @dataclass(frozen=True)
 class CodeData(DataclassHideDefault):
     """
+    The `CodeData` is a data class which contains the same information to reconstruct
+    the Python CodeType, but is easier to deal with, then the bytecode pieces in there:
+
     A code object is what is seralized on disk as PYC file. It is the lowest
     abstraction level CPython provides before execution.
 
@@ -42,7 +32,11 @@ class CodeData(DataclassHideDefault):
 
     All recursive code object are translated to code data as well.
 
-    From https://docs.python.org/3/library/inspect.html
+    Going back and forth to a code data object is gauranteed to be isomporphic,
+    meaning all the data is preserved::
+
+        assert CodeData.from_code(code).to_code == code
+
     """
 
     # Bytecode instructions
@@ -92,10 +86,39 @@ class CodeData(DataclassHideDefault):
     # tuple of names of cell variables (referenced by containing scopes)
     cellvars: Tuple[str, ...] = field(default=tuple())
 
-    def _verify(self) -> None:
-        verify_block(self.blocks)
-        # Verify hashable
-        hash(self)
+    @classmethod
+    def from_code(cls, code: CodeType) -> CodeData:
+        """
+        Parse a CodeType into python data structure.
+
+        :type code: types.CodeType
+        """
+        from .code_data import to_code_data
+
+        return to_code_data(code)
+
+    def to_code(self) -> CodeType:
+        """
+        Convert the code data type back to code.
+
+        :rtype: types.CodeType
+        """
+        from .code_data import from_code_data
+
+        return from_code_data(self)
+
+    def normalize(self) -> CodeData:
+        """
+
+        Removes all fields from the bytecode that do not effect its semantics, but only
+        its serialization.
+
+        This includes things like the order of the `co_consts` array, the number of
+        extended args for some bytecodes, etc.
+        """
+        from .normalize import normalize
+
+        return normalize(self)
 
     def __iter__(self) -> Iterator[CodeData]:
         """
@@ -110,189 +133,236 @@ class CodeData(DataclassHideDefault):
                     yield from arg.value
 
 
-@normalize.register
-def _normalize_code_data(code_data: CodeData) -> CodeData:
-    return replace(
-        code_data,
-        blocks=normalize(code_data.blocks),
-        _additional_constants=tuple(),
-        _additional_names=tuple(),
-        _additional_varnames=tuple(),
-        _additional_line=None,
-        _first_line_number_override=None,
-    )
+FlagsData = FrozenSet[str]
 
 
-# Functions should have both of these flags set
-# https://github.com/python/cpython/blob/443370d8acd107da235d2e9758e06ab3583be4ea/Python/compile.c#L5348
-FN_FLAGS = {"NEWLOCALS", "OPTIMIZED"}
+# tuple of blocks, each block is a list of instructions.
+Blocks = Tuple[Tuple["Instruction", ...], ...]
 
 
-def to_code_data(code: CodeType) -> CodeData:
+@dataclass(frozen=True)
+class Instruction(DataclassHideDefault):
     """
-    Parse a CodeType into python data structure.
-
-    :type code: types.CodeType
+    An instruction in the bytecode.
     """
-    if sys.version_info >= (3, 8):
-        posonlyargcount = code.co_posonlyargcount
-    else:
-        posonlyargcount = 0
 
-    line_mapping = to_line_mapping(code)
+    # The name of the instruction
+    name: str = field(metadata={"positional": True})
 
-    # TODO: #54 For functions, do 1 + this line
-    first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
+    # The integer value of the arg
+    arg: Arg = field(metadata={"positional": True})
 
-    constants = tuple(map(to_code_constant, code.co_consts))
+    # The number of args, if it differs form the instrsize
+    # Note: in Python >= 3.10 we can calculute this from the instruction size,
+    # using `instrsize`, but in python < 3.10, sometimes instructions are prefixed
+    # with extended args with value 0 (not sure why or how), so we need to save
+    # the value manually to recreate the instructions
+    _n_args_override: Optional[int] = field(default=None)
 
-    flags_data = to_flags_data(code.co_flags)
+    # The line number of the instruction
+    line_number: Optional[int] = field(default=None)
 
-    args, flags_data = Args.from_input(
-        ArgsInput(
-            argcount=code.co_argcount,
-            posonlyargcount=posonlyargcount,
-            kwonlyargcount=code.co_kwonlyargcount,
-            varnames=code.co_varnames,
-            flags_data=flags_data,
-        )
-    )
-
-    # TODO: Make this special type constructor?
-    fn_flags = flags_data & FN_FLAGS
-    if len(fn_flags) == 0:
-        block_type = None
-        assert not args, "if this isn't a function, it shouldn't have args"
-    elif len(fn_flags) == 2:
-        # Use the first const as a docstring if its a string
-        # https://github.com/python/cpython/blob/da8be157f4e275c4c32b9199f1466ed7e52f62cf/Objects/funcobject.c#L33-L38
-        docstring = (
-            constants[0] if constants and isinstance(constants[0], str) else None
-        )
-        block_type = FunctionBlock(args, docstring)
-        flags_data -= FN_FLAGS
-    else:
-        raise ValueError(f"Expected both flags to represent function: {fn_flags}")
-
-    # retrieve the blocks and pop off used line mapping
-    (
-        blocks,
-        additional_names,
-        additional_varnames,
-        additional_constants,
-    ) = bytes_to_blocks(
-        code.co_code,
-        line_mapping,
-        code.co_names,
-        code.co_varnames,
-        constants,
-        block_type,
-        args,
-    )
-    next_line = line_mapping.pop_additional_line(len(code.co_code))
-    return CodeData(
-        blocks,
-        next_line,
-        first_line_number_override,
-        additional_names,
-        additional_varnames,
-        additional_constants,
-        block_type,
-        code.co_nlocals,
-        code.co_stacksize,
-        flags_data,
-        code.co_filename,
-        code.co_name,
-        code.co_freevars,
-        code.co_cellvars,
-    )
+    # A number of additional line offsets to include in the line mapping
+    # Unneccessary to preserve line semantics, but needed to preserve isomoprhic
+    # byte-for-byte mapping
+    # Only need in Python < 3.10
+    _line_offsets_override: tuple[int, ...] = field(default=tuple())
 
 
-def from_code_data(code_data: CodeData) -> CodeType:
+Arg = Union[int, "Jump", "Name", "Varname", "Constant"]
+
+
+@dataclass(frozen=True)
+class Jump(DataclassHideDefault):
     """
-    Serialize python data structures into a CodeType.
-
-    :rtype: types.CodeType
+    A jump argument.
     """
-    flags_data = code_data.flags
-    if isinstance(code_data.type, FunctionBlock):
-        flags_data = flags_data | FN_FLAGS
-    code, line_mapping, names, varnames, constants = blocks_to_bytes(
-        code_data.blocks,
-        code_data._additional_names,
-        code_data._additional_varnames,
-        code_data._additional_constants,
-        code_data.type,
-    )
 
-    consts = tuple(map(from_code_constant, constants))
+    # The block index of the target
+    target: int = field(metadata={"positional": True})
+    # Whether the jump is absolute or relative
+    relative: bool = field(default=False)
 
-    if code_data._additional_line:
-        line_mapping.add_additional_line(code_data._additional_line, len(code))
 
-    if isinstance(code_data.type, FunctionBlock):
-        args_input = code_data.type.args.to_input(flags_data)
-        argcount = args_input.argcount
-        posonlyargcount = args_input.posonlyargcount
-        kwonlyargcount = args_input.kwonlyargcount
-        flags_data = args_input.flags_data
+@dataclass(frozen=True)
+class Name(DataclassHideDefault):
+    """
+    A name argument.
+    """
 
-        assert (
-            varnames[: len(args_input.varnames)] == args_input.varnames
-        ), "varnames should start with args"
-    else:
-        argcount = 0
-        posonlyargcount = 0
-        kwonlyargcount = 0
+    name: str = field(metadata={"positional": True})
 
-    flags = from_flags_data(flags_data)
+    # Optional override for the position of the name, if it is not ordered by occurance
+    # in the code.
+    _index_override: Optional[int] = field(default=None)
 
-    first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
 
-    line_table = from_line_mapping(line_mapping)
-    # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
-    # Only include posonlyargcount on 3.8+
-    if sys.version_info >= (3, 8):
-        return CodeType(
-            argcount,
-            posonlyargcount,
-            kwonlyargcount,
-            code_data.nlocals,
-            code_data.stacksize,
-            flags,
-            code,
-            consts,
-            names,
-            varnames,
-            code_data.filename,
-            code_data.name,
-            first_line_no,
-            line_table,
-            code_data.freevars,
-            code_data.cellvars,
-        )
-    else:
-        if posonlyargcount:
-            raise NotImplementedError(
-                "Positional only args are only supported on Python 3.8+"
-            )
-        return CodeType(
-            argcount,
-            kwonlyargcount,
-            code_data.nlocals,
-            code_data.stacksize,
-            flags,
-            code,
-            consts,
-            names,
-            varnames,
-            code_data.filename,
-            code_data.name,
-            first_line_no,
-            line_table,
-            code_data.freevars,
-            code_data.cellvars,
-        )
+@dataclass(frozen=True)
+class Varname(DataclassHideDefault):
+    """
+    A varname argument.
+    """
+
+    varname: str = field(metadata={"positional": True})
+
+    # Optional override for the position of the name, if it is not ordered by occurance
+    # in the code.
+    _index_override: Optional[int] = field(default=None)
+
+
+@dataclass(frozen=True)
+class Constant(DataclassHideDefault):
+    """
+    A constant argument.
+    """
+
+    value: ConstantValue = field(metadata={"positional": True})
+    # Optional override for the position if it is not ordered by occurance in the code.
+    _index_override: Optional[int] = field(default=None)
+
+
+# TODO: Add:
+# 3. a local lookup
+# 5. An unused value
+# 6. Comparison lookup
+# 7. format value
+# 8. Generator kind
+
+
+AdditionalNames = Tuple["AdditionalName", ...]
+AdditionalConstants = Tuple["AdditionalConstant", ...]
+AdditionalVarnames = Tuple["AdditionalVarname", ...]
+
+
+@dataclass(frozen=True)
+class AdditionalName(DataclassHideDefault):
+    """
+    An additional name argument, that was not used in the instructions
+    """
+
+    name: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class AdditionalConstant(DataclassHideDefault):
+    """
+    An additional name argument, that was not used in the instructions
+    """
+
+    constant: ConstantValue = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class AdditionalVarname(DataclassHideDefault):
+    """
+    An additional var name argument, that was not used in the instructions
+    """
+
+    varname: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+# We process each constant into a `ConstantValue`, so that we can represent
+# the recursive typing of the constants in a way MyPy can handle as well preserving
+# the hash and equality of constants, to the standard that the code object uses. A
+# code object containing a constant of `0` should not be equal to the same code object
+# with a constant of `False`, even though in Python `0 == False`. So by wrapping
+# the different constant types in containers with the type, this makes sure these
+# are not equal:
+ConstantValue = Union["InnerConstant", CodeData]
+
+# tuples/sets can only contain these values, not the code type itself.
+InnerConstant = Union[
+    "ConstantInt",
+    str,
+    "ConstantFloat",
+    None,
+    "ConstantBool",
+    bytes,
+    "ConstantEllipsis",
+    "ConstantComplex",
+    "ConstantSet",
+    "ConstantTuple",
+]
+
+
+# Wrap these in types, so that, say, bytecode with constants of 1
+# are not equal to bytecodes of constants of True.
+
+
+@dataclass(frozen=True)
+class ConstantBool(DataclassHideDefault):
+    """
+    A constant bool.
+    """
+
+    value: bool = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class ConstantInt(DataclassHideDefault):
+    """
+    A constant int.
+    """
+
+    value: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class ConstantFloat(DataclassHideDefault):
+    """
+    A constant float.
+    """
+
+    value: float = field(metadata={"positional": True})
+    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
+    is_neg_zero: bool = field(default=False)
+
+
+@dataclass(frozen=True)
+class ConstantComplex(DataclassHideDefault):
+    """
+    A constant complex.
+    """
+
+    value: complex = field(metadata={"positional": True})
+    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
+    real_is_neg_zero: bool = field(default=False)
+    imag_is_neg_zero: bool = field(default=False)
+
+
+# We need to wrap the data structures in dataclasses to be able to represent
+# them with MyPy, since it doesn't support recursive types
+# https://github.com/python/mypy/issues/731
+@dataclass(frozen=True)
+class ConstantTuple(DataclassHideDefault):
+    """
+    A constant tuple.
+    """
+
+    value: tuple[InnerConstant, ...] = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class ConstantSet(DataclassHideDefault):
+    """
+    A constant set.
+    """
+
+    value: FrozenSet[InnerConstant] = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class ConstantEllipsis(DataclassHideDefault):
+    """
+    Use this instead of EllipsisType, because EllipsisType is not supported
+    in Sphinx autodc.
+    """
+
+    def __str__(self):
+        return "..."
 
 
 # The type of block this is, as we can infer from the flags.
@@ -302,6 +372,48 @@ BlockType = Union["FunctionBlock", None]
 
 
 @dataclass(frozen=True)
+class Args(DataclassHideDefault):
+    """
+    Holds the different possible args for a function
+    """
+
+    positional_only: tuple[str, ...] = field(default=())
+    positional_or_keyword: tuple[str, ...] = field(default=())
+    var_positional: Optional[str] = field(default=None)
+    keyword_only: tuple[str, ...] = field(default=())
+    var_keyword: Optional[str] = field(default=None)
+
+    @property
+    def parameters(self) -> OrderedDict[str, _ParameterKind]:
+        """
+        Returns the names of the args, in order, mapping to their kind.
+        """
+        from .args import args_to_parameters
+
+        return args_to_parameters(self)
+
+    def __len__(self) -> int:
+        """
+        Returns the number of args
+        """
+        return len(self.parameters)
+
+
+@dataclass(frozen=True)
 class FunctionBlock(DataclassHideDefault):
+    """
+    A block of code in a function.
+    """
+
     args: Args = field(default_factory=Args, metadata={"positional": True})
     docstring: Optional[str] = field(default=None)
+
+
+@dataclass(frozen=True)
+class AdditionalLine(DataclassHideDefault):
+    """
+    An additional line of code, that was not used in the instructions
+    """
+
+    line: Optional[int]
+    additional_offsets: tuple[int, ...] = field(default=tuple())

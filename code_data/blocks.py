@@ -8,18 +8,28 @@ from __future__ import annotations
 import ctypes
 import dis
 import sys
-from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union
+from dataclasses import replace
+from typing import Iterable, Tuple
 
-from .args import Args
-from .constants import ConstantDataType
-from .dataclass_hide_default import DataclassHideDefault
+from . import (
+    AdditionalConstant,
+    AdditionalConstants,
+    AdditionalName,
+    AdditionalNames,
+    AdditionalVarname,
+    AdditionalVarnames,
+    Arg,
+    Args,
+    Blocks,
+    BlockType,
+    Constant,
+    ConstantValue,
+    Instruction,
+    Jump,
+    Name,
+    Varname,
+)
 from .line_mapping import LineMapping
-from .normalize import normalize
-
-if TYPE_CHECKING:
-    # Circular import
-    from . import BlockType
 
 
 def bytes_to_blocks(
@@ -27,7 +37,7 @@ def bytes_to_blocks(
     line_mapping: LineMapping,
     names: tuple[str, ...],
     varnames: tuple[str, ...],
-    constants: tuple[ConstantDataType, ...],
+    constants: tuple[ConstantValue, ...],
     block_type: BlockType,
     args: Args,
 ) -> tuple[Blocks, AdditionalNames, AdditionalVarnames, AdditionalConstants]:
@@ -49,11 +59,11 @@ def bytes_to_blocks(
 
     # We count all the arg names as "found", since we will always preserve them in the
     # args
-    found_varnames: list[str] = list(args.parameters().keys())
+    found_varnames: list[str] = list(args.parameters.keys())
 
     # For recording what constants we have found to understand the order of the
     # constants
-    found_constants: list[ConstantDataType] = []
+    found_constants: list[ConstantValue] = []
     # Keep a set of the constant indices we have found, so we can check this against
     # our initial constants at the end to see which we still have to add
     # We should do the same with names, but checking against found_names works
@@ -163,7 +173,7 @@ def blocks_to_bytes(
     additional_consts: AdditionalConstants,
     block_type: BlockType,
 ) -> Tuple[
-    bytes, LineMapping, tuple[str, ...], tuple[str, ...], tuple[ConstantDataType, ...]
+    bytes, LineMapping, tuple[str, ...], tuple[str, ...], tuple[ConstantValue, ...]
 ]:
     from . import FunctionBlock
 
@@ -181,14 +191,14 @@ def blocks_to_bytes(
     name_final_positions: dict[int, int] = {}
 
     varnames: list[str] = list(
-        block_type.args.parameters().keys()
+        block_type.args.parameters.keys()
         if isinstance(block_type, FunctionBlock)
         else ()
     )
     varname_final_positions: dict[int, int] = {i: i for i in range(len(varnames))}
 
     # List of constants we have collected from the instructions
-    constants: list[ConstantDataType] = []
+    constants: list[ConstantValue] = []
     # Mapping of constant index to constant name positions
     constant_final_positions: dict[int, int] = {}
 
@@ -317,8 +327,8 @@ def to_arg(
     found_names: list[str],
     varnames: tuple[str, ...],
     found_varnames: list[str],
-    consts: tuple[ConstantDataType, ...],
-    found_constants: list[ConstantDataType],
+    consts: tuple[ConstantValue, ...],
+    found_constants: list[ConstantValue],
     found_constant_indices: set[int],
 ) -> Arg:
     if opcode in dis.hasjabs:
@@ -356,7 +366,7 @@ def from_arg(
     name_final_positions: dict[int, int],
     varnames: list[str],
     varnames_final_positions: dict[int, int],
-    constants: list[ConstantDataType],
+    constants: list[ConstantValue],
     constants_final_positions: dict[int, int],
 ) -> int:
     from . import FunctionBlock
@@ -420,155 +430,7 @@ def verify_block(blocks: Blocks) -> None:
                 assert arg.target in range(len(blocks)), "Jump target is out of range"
 
 
-@normalize.register
-def _normalize_blocks(blocks: tuple) -> tuple:
-    """
-    Normalize the blocks, by making sure every
-    instruction that jumps can find it's block.
-    """
-    return tuple(map(normalize, blocks))
-
-
-@dataclass(frozen=True)
-class Instruction(DataclassHideDefault):
-    # The name of the instruction
-    name: str = field(metadata={"positional": True})
-
-    # The integer value of the arg
-    arg: Arg = field(metadata={"positional": True})
-
-    # The number of args, if it differs form the instrsize
-    # Note: in Python >= 3.10 we can calculute this from the instruction size,
-    # using `instrsize`, but in python < 3.10, sometimes instructions are prefixed
-    # with extended args with value 0 (not sure why or how), so we need to save
-    # the value manually to recreate the instructions
-    _n_args_override: Optional[int] = field(default=None)
-
-    # The line number of the instruction
-    line_number: Optional[int] = field(default=None)
-
-    # A number of additional line offsets to include in the line mapping
-    # Unneccessary to preserve line semantics, but needed to preserve isomoprhic
-    # byte-for-byte mapping
-    # Only need in Python < 3.10
-    _line_offsets_override: tuple[int, ...] = field(default=tuple())
-
-
-@normalize.register
-def normalize_instruction(instruction: Instruction) -> Instruction:
-    return replace(
-        instruction,
-        _n_args_override=None,
-        _line_offsets_override=tuple(),
-        arg=normalize(instruction.arg),
-    )
-
-
-@dataclass(frozen=True)
-class Jump(DataclassHideDefault):
-    # The block index of the target
-    target: int = field(metadata={"positional": True})
-    # Whether the jump is absolute or relative
-    relative: bool = field(default=False)
-
-
-@dataclass(frozen=True)
-class Name(DataclassHideDefault):
-    """
-    A name argument.
-    """
-
-    name: str = field(metadata={"positional": True})
-
-    # Optional override for the position of the name, if it is not ordered by occurance
-    # in the code.
-    _index_override: Optional[int] = field(default=None)
-
-
-@dataclass(frozen=True)
-class Varname(DataclassHideDefault):
-    """
-    A varname argument.
-    """
-
-    varname: str = field(metadata={"positional": True})
-
-    # Optional override for the position of the name, if it is not ordered by occurance
-    # in the code.
-    _index_override: Optional[int] = field(default=None)
-
-
-@dataclass(frozen=True)
-class Constant(DataclassHideDefault):
-    """
-    A constant argument.
-    """
-
-    value: ConstantDataType = field(metadata={"positional": True})
-    # Optional override for the position if it is not ordered by occurance in the code.
-    _index_override: Optional[int] = field(default=None)
-
-
-# TODO: Add:
-# 3. a local lookup
-# 5. An unused value
-# 6. Comparison lookup
-# 7. format value
-# 8. Generator kind
-
-Arg = Union[int, Jump, Name, Varname, Constant]
-
-
-@normalize.register
-def _normalize_arg_constant(arg: Constant) -> Constant:
-    return replace(arg, _index_override=None, value=normalize(arg.value))
-
-
-@normalize.register(Name)
-@normalize.register(Varname)
-def _normalize_arg(arg: Union[Name, Varname]) -> Union[Name, Varname]:
-    return replace(arg, _index_override=None)
-
-
-# tuple of blocks, each block is a list of instructions. Blocks are
-Blocks = Tuple[Tuple[Instruction, ...], ...]
-
 # TODO: Possibly replace all these with `_additional_args` and use the args?
-
-
-@dataclass(frozen=True)
-class AdditionalName(DataclassHideDefault):
-    """
-    An additional name argument, that was not used in the instructions
-    """
-
-    name: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalConstant(DataclassHideDefault):
-    """
-    An additional name argument, that was not used in the instructions
-    """
-
-    constant: ConstantDataType = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalVarname(DataclassHideDefault):
-    """
-    An additional var name argument, that was not used in the instructions
-    """
-
-    varname: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-AdditionalNames = Tuple[AdditionalName, ...]
-AdditionalConstants = Tuple[AdditionalConstant, ...]
-AdditionalVarnames = Tuple[AdditionalVarname, ...]
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069

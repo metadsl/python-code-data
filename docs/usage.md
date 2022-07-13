@@ -55,9 +55,9 @@ dis.dis(code)
 So instead, lets turn it into ✨data✨:
 
 ```{code-cell}
-from code_data import to_code_data
+from code_data import CodeData
 
-code_data = to_code_data(code)
+code_data = CodeData.from_code(code)
 code_data
 ```
 
@@ -78,19 +78,19 @@ Let's try to change the additions to subtractions!
 ```{code-cell}
 from dataclasses import replace
 
-for block in code_data.blocks:
-    for instruction in block:
-        if instruction.name == "BINARY_ADD":
-            instruction.name = "BINARY_SUBTRACT"
-code_data
+new_code_data = replace(
+    code_data,
+    blocks=tuple(tuple(
+        replace(instruction, name="BINARY_SUBTRACT") if instruction.name == "BINARY_ADD" else instruction
+        for instruction in block
+    ) for block in code_data.blocks)
+)
 ```
 
 Now we can turn this back into code and exec it!
 
 ```{code-cell}
-from code_data import from_code_data
-
-new_code = from_code_data(code_data)
+new_code = new_code_data.to_code()
 exec(new_code)
 ```
 
@@ -115,7 +115,7 @@ names_source_and_codes[:3]
 Lets turn them all into code data:
 
 ```{code-cell}
-all_code_data = [to_code_data(code) for (name, source, code) in names_source_and_codes]
+all_code_data = [CodeData.from_code(code) for (name, source, code) in names_source_and_codes]
 all_code_data[0].flags
 ```
 

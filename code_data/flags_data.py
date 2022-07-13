@@ -6,14 +6,14 @@ from __future__ import annotations
 
 import dis
 import enum
-from typing import FrozenSet
 
+from . import FlagsData
+
+# Import this to access future flags. Skip sorting so it isn't removed
 import __future__  # isort:skip
 
 
-__all__ = ["FlagsData", "to_flags_data", "from_flags_data"]
-
-FlagsData = FrozenSet[str]
+__all__ = ["to_flags_data", "from_flags_data"]
 
 
 def to_flags_data(flags: int) -> FlagsData:

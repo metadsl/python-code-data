@@ -31,9 +31,9 @@ Now we can turn them all into data, and also iterate through them all to have al
 ones at the top level:
 
 ```{code-cell}
-from code_data import to_code_data
+from code_data import CodeData
 
-all_code_data = {code_data for _, _, code in module_codes for code_data in to_code_data(code)}
+all_code_data = {code_data for _, _, code in module_codes for code_data in CodeData.from_code(code)}
 print(f"We have loaded {len(all_code_data)} code data objects")
 ```
 
@@ -59,7 +59,7 @@ print(f"The function has a docstring? {have_docstring}")
 And finally, we can see how many different argument types are used cumulatively:
 
 ```{code-cell}
-param_kinds = Counter(k for c in fns for k in c.type.args.parameters().values())
+param_kinds = Counter(k for c in fns for k in c.type.args.parameters.values())
 param_kinds
 ```
 

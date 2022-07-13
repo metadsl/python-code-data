@@ -14,7 +14,8 @@ import pytest
 import rich.progress
 from hypothesis import HealthCheck, given, settings
 
-from . import CodeData, from_code_data, normalize, to_code_data
+from . import CodeData
+from .blocks import verify_block
 from .line_mapping import (
     USE_LINETABLE,
     LineMapping,
@@ -165,9 +166,12 @@ def test_generated(source_code):
 
 
 def verify_code(code: CodeType, debug=True) -> None:
-    code_data = to_code_data(code)
-    code_data._verify()
-    resulting_code = from_code_data(code_data)
+    code_data = CodeData.from_code(code)
+
+    assert hash(code_data), "verify hashable"
+    verify_block(code_data.blocks)
+
+    resulting_code = code_data.to_code()
 
     verify_normalize(code_data)
 
@@ -203,10 +207,10 @@ def verify_normalize(code_data: CodeData) -> None:
     """
     Verify that after normalizing, going to/from bytecode produces the same code_data.
     """
-    code_data = normalize(code_data)
-    normalized_code = from_code_data(code_data)
-    new_code_data = to_code_data(normalized_code)
-    new_code_data = normalize(new_code_data)
+    code_data = code_data.normalize()
+    normalized_code = code_data.to_code()
+    new_code_data = CodeData.from_code(normalized_code)
+    new_code_data = new_code_data.normalize()
     assert code_data == new_code_data
 
 
