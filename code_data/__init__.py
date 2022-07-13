@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field, replace
 from types import CodeType
-from typing import Generator, Iterable, Iterator, Optional, Tuple, Union
+from typing import Iterator, Optional, Tuple, Union
 
 from code_data.args import Args, ArgsInput
 
