@@ -71,8 +71,6 @@ class CodeData(DataclassHideDefault):
     # The type of block this is
     type: BlockType = field(default=None)
 
-    args: Args = field(default_factory=Args)
-
     # number of local variables
     nlocals: int = field(default=0)
 
@@ -151,13 +149,14 @@ def to_code_data(code: CodeType) -> CodeData:
     fn_flags = flags_data & FN_FLAGS
     if len(fn_flags) == 0:
         block_type = None
+        assert not args.names(), "if this isn't a function, it shouldn't have args"
     elif len(fn_flags) == 2:
         # Use the first const as a docstring if its a string
         # https://github.com/python/cpython/blob/da8be157f4e275c4c32b9199f1466ed7e52f62cf/Objects/funcobject.c#L33-L38
         docstring = (
             constants[0] if constants and isinstance(constants[0], str) else None
         )
-        block_type = FunctionBlock(docstring)
+        block_type = FunctionBlock(args, docstring)
         flags_data -= FN_FLAGS
     else:
         raise ValueError(f"Expected both flags to represent function: {fn_flags}")
@@ -186,7 +185,6 @@ def to_code_data(code: CodeType) -> CodeData:
         additional_varnames,
         additional_constants,
         block_type,
-        args,
         code.co_nlocals,
         code.co_stacksize,
         flags_data,
@@ -212,7 +210,6 @@ def from_code_data(code_data: CodeData) -> CodeType:
         code_data._additional_varnames,
         code_data._additional_constants,
         code_data.type,
-        code_data.args,
     )
 
     consts = tuple(map(from_code_constant, constants))
@@ -220,15 +217,20 @@ def from_code_data(code_data: CodeData) -> CodeType:
     if code_data._additional_line:
         line_mapping.add_additional_line(code_data._additional_line, len(code))
 
-    args_input = code_data.args.to_input(flags_data)
-    argcount = args_input.argcount
-    posonlyargcount = args_input.posonlyargcount
-    kwonlyargcount = args_input.kwonlyargcount
-    flags_data = args_input.flags_data
+    if isinstance(code_data.type, FunctionBlock):
+        args_input = code_data.type.args.to_input(flags_data)
+        argcount = args_input.argcount
+        posonlyargcount = args_input.posonlyargcount
+        kwonlyargcount = args_input.kwonlyargcount
+        flags_data = args_input.flags_data
 
-    assert (
-        varnames[: len(args_input.varnames)] == args_input.varnames
-    ), "varnames should start with args"
+        assert (
+            varnames[: len(args_input.varnames)] == args_input.varnames
+        ), "varnames should start with args"
+    else:
+        argcount = 0
+        posonlyargcount = 0
+        kwonlyargcount = 0
 
     flags = from_flags_data(flags_data)
 
@@ -288,4 +290,5 @@ BlockType = Union["FunctionBlock", None]
 
 @dataclass(frozen=True)
 class FunctionBlock(DataclassHideDefault):
+    args: Args = field(default_factory=Args, metadata={"positional": True})
     docstring: Optional[str] = field(default=None)

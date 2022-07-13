@@ -162,7 +162,6 @@ def blocks_to_bytes(
     additional_varnames: AdditionalVarnames,
     additional_consts: AdditionalConstants,
     block_type: BlockType,
-    function_args: Args,
 ) -> Tuple[
     bytes, LineMapping, tuple[str, ...], tuple[str, ...], tuple[ConstantDataType, ...]
 ]:
@@ -181,7 +180,9 @@ def blocks_to_bytes(
     # Mapping of name index to final name positions
     name_final_positions: dict[int, int] = {}
 
-    varnames: list[str] = list(function_args.names())
+    varnames: list[str] = list(
+        block_type.args.names() if isinstance(block_type, FunctionBlock) else ()
+    )
     varname_final_positions: dict[int, int] = {i: i for i in range(len(varnames))}
 
     # List of constants we have collected from the instructions
