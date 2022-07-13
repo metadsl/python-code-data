@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import marshal
+import pathlib
 import pkgutil
 import warnings
 from importlib.abc import Loader
 from types import CodeType
 from typing import Iterable
 
-__all__ = ["module_codes"]
+__all__ = ["module_codes", "modules_codes_cached"]
 
 
 def module_codes() -> Iterable[tuple[str, str, CodeType]]:
@@ -31,3 +33,20 @@ def module_codes() -> Iterable[tuple[str, str, CodeType]]:
             if code:
                 source = loader.get_source(mi.name)  # type: ignore
                 yield mi.name, source, code
+
+
+CACHE_FILE = pathlib.Path(".module_cache")
+
+
+def modules_codes_cached() -> list[tuple[str, str, CodeType]]:
+    """
+    Cached version of `module_codes`, cached on disk file.
+    """
+    if CACHE_FILE.exists():
+        with CACHE_FILE.open("rb") as f:
+            return marshal.load(f)
+    else:
+        codes = list(module_codes())
+        with CACHE_FILE.open("wb") as f:
+            marshal.dump(codes, f)
+        return codes
