@@ -15,7 +15,6 @@ import rich.progress
 from hypothesis import HealthCheck, given, settings
 
 from . import CodeData, from_code_data, normalize, to_code_data
-from .blocks import AdditionalVarname
 from .line_mapping import (
     USE_LINETABLE,
     LineMapping,
@@ -163,31 +162,6 @@ def test_generated(source_code):
         warnings.simplefilter("ignore")
         code = compile(source_code, "<string>", "exec")
     verify_code(code)
-
-
-def test_remove_unused_varnames():
-    def _complicated_identity(b):
-        """
-        A more complicated identity function.
-        When compiling on Python 3.10, this includes some varnames which are neve
-        accessed.
-        So we can use this for testing if removing those varnames doesn't effect the
-        behavior.
-        """
-        return [b for _ in (0,)][0]
-
-    assert _complicated_identity(10) == 10
-
-    code = _complicated_identity.__code__
-    code_data = to_code_data(code)
-    assert code_data._additional_varnames == (AdditionalVarname("b", 0),)
-    new_code_data = normalize(code_data)
-    assert not new_code_data._additional_varnames
-    new_code = from_code_data(new_code_data)
-
-    _complicated_identity.__code__ = new_code
-
-    assert _complicated_identity(10) == 10
 
 
 def verify_code(code: CodeType, debug=True) -> None:
