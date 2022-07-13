@@ -97,7 +97,7 @@ code = next(has_unused_names)
 def fn():
     if False:
         a = 100
-        z = a
+        z = a  # flake8: noqa
 
 
 print(used_all_local_names(fn.__code__))

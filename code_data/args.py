@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from sys import flags
 from typing import Optional, Tuple
 
 from code_data.flags_data import FlagsData
