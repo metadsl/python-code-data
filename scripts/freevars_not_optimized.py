@@ -4,6 +4,7 @@ Where are there freevars but the code object is not optimized?
 7/14/2022
 """
 
+import dis
 import inspect
 from collections import Counter
 from types import CodeType
@@ -35,8 +36,6 @@ def test():
     class B:
         x = a
 
-
-import dis
 
 dis.dis(test)
 
