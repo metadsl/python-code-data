@@ -66,9 +66,6 @@ class CodeData(DataclassHideDefault):
     # The type of block this is
     type: BlockType = field(default=None)
 
-    # number of local variables
-    nlocals: int = field(default=0)
-
     # virtual machine stack space required
     stacksize: int = field(default=1)
 

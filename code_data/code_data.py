@@ -81,7 +81,6 @@ def to_code_data(code: CodeType) -> CodeData:
         additional_varnames,
         additional_constants,
         block_type,
-        code.co_nlocals,
         code.co_stacksize,
         flags_data,
         code.co_filename,
@@ -129,6 +128,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
     first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
 
     line_table = from_line_mapping(line_mapping)
+    nlocals = len(varnames)
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):
@@ -136,7 +136,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
             argcount,
             posonlyargcount,
             kwonlyargcount,
-            code_data.nlocals,
+            nlocals,
             code_data.stacksize,
             flags,
             code,
@@ -158,7 +158,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
         return CodeType(
             argcount,
             kwonlyargcount,
-            code_data.nlocals,
+            nlocals,
             code_data.stacksize,
             flags,
             code,
