@@ -62,12 +62,16 @@ def to_code_data(code: CodeType) -> CodeData:
         blocks,
         additional_names,
         additional_varnames,
+        additional_freevars,
+        additional_cellvars,
         additional_constants,
     ) = bytes_to_blocks(
         code.co_code,
         line_mapping,
         code.co_names,
         code.co_varnames,
+        code.co_freevars,
+        code.co_cellvars,
         constants,
         block_type,
         args,
@@ -80,13 +84,13 @@ def to_code_data(code: CodeType) -> CodeData:
         additional_names,
         additional_varnames,
         additional_constants,
+        additional_freevars,
+        additional_cellvars,
         block_type,
         code.co_stacksize,
         flags_data,
         code.co_filename,
         code.co_name,
-        code.co_freevars,
-        code.co_cellvars,
     )
 
 
@@ -95,10 +99,20 @@ def from_code_data(code_data: CodeData) -> CodeType:
     flags_data = code_data.flags
     if isinstance(code_data.type, FunctionBlock):
         flags_data = flags_data | FN_FLAGS
-    code, line_mapping, names, varnames, constants = blocks_to_bytes(
+    (
+        code,
+        line_mapping,
+        names,
+        varnames,
+        freevars,
+        cellvars,
+        constants,
+    ) = blocks_to_bytes(
         code_data.blocks,
         code_data._additional_names,
         code_data._additional_varnames,
+        code_data._additional_freevars,
+        code_data._additional_cellvars,
         code_data._additional_constants,
         code_data.type,
     )
@@ -147,8 +161,8 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.name,
             first_line_no,
             line_table,
-            code_data.freevars,
-            code_data.cellvars,
+            freevars,
+            cellvars,
         )
     else:
         if posonlyargcount:
@@ -169,6 +183,6 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.name,
             first_line_no,
             line_table,
-            code_data.freevars,
-            code_data.cellvars,
+            freevars,
+            cellvars,
         )

@@ -42,3 +42,9 @@ Let's take a look at `ceval.c` to see where they are used.
 and be larger than `co_cellvars`.
 
 The rest all index into `freevars` directly, which is defined as `f->f_localsplus + co->co_nlocals`.
+
+This `f_localsplus` contains both the `varnames` locals plus the cells and freevars.
+And since `nlocals == len(varnames)`, this offsets the array to start looking at the
+cellvars and freevars. This is created in `PyFrame_FastToLocalsWithError` in `frameobject.c`.
+
+TODO: Figure out how to compute which of them are at the right indx and save that...

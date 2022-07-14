@@ -8,8 +8,6 @@ from importlib.abc import Loader
 from types import CodeType
 from typing import Iterable
 
-__all__ = ["module_codes", "modules_codes_cached"]
-
 
 def module_codes() -> Iterable[tuple[str, str, CodeType]]:
     """
@@ -50,3 +48,20 @@ def modules_codes_cached() -> list[tuple[str, str, CodeType]]:
         with CACHE_FILE.open("wb") as f:
             marshal.dump(codes, f)
         return codes
+
+
+def all_module_codes_cached() -> list[CodeType]:
+    """
+    Retrn all the module codes recursively.
+    """
+    all_code_objects: list[CodeType] = []
+
+    def process(code: CodeType) -> None:
+        all_code_objects.append(code)
+        for const in code.co_consts:
+            if isinstance(const, CodeType):
+                process(const)
+
+    for name, _, code in modules_codes_cached():
+        process(code)
+    return all_code_objects
