@@ -119,41 +119,7 @@ class LineMapping:
             additional_line.additional_offsets
         )
 
-    def set_first_line(self, first_line: int) -> Optional[int]:
-        """
-        Increments all the line numbers by the first line numbers.
-
-        This should be isomorphic with `trim_first_line`, so that calling them
-        in sequence should be a no-op:
-
-            optional_first_line = cd.set_first_line(x)
-            cd.trim_first_line(optional_first_line)
-        """
-        self._modify_line_offsets(first_line)
-        # If the first line is equal to the min line number now,
-        # we don't need to save it for later, because we can compute it
-        if self._min_line_number() == first_line:
-            return None
-        # Otherwise return it to save when trimming
-        return first_line
-
-    def trim_first_line(self, first_line_number: Optional[int]) -> int:
-        """
-        Offsets all the lines by a constant amount, returning that amount.
-        """
-        trim_amount = first_line_number or self._min_line_number() or 1
-        self._modify_line_offsets(-trim_amount)
-        return trim_amount
-
-    def _min_line_number(self) -> Optional[int]:
-        """
-        Return the minimum line number in the mapping.
-        """
-        return min(
-            (v for v in self.offset_to_line.values() if v is not None), default=None
-        )
-
-    def _modify_line_offsets(self, line_offset: int) -> None:
+    def modify_line_offsets(self, line_offset: int) -> None:
         """
         Modify all the line offsets by a constant amount.
         """

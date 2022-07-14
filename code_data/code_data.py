@@ -24,8 +24,7 @@ def to_code_data(code: CodeType) -> CodeData:
 
     line_mapping = to_line_mapping(code)
 
-    # TODO: #54 For functions, do 1 + this line
-    first_line_number_override = line_mapping.set_first_line(code.co_firstlineno)
+    line_mapping.modify_line_offsets(code.co_firstlineno)
 
     constants = tuple(map(to_constant, code.co_consts))
 
@@ -76,18 +75,18 @@ def to_code_data(code: CodeType) -> CodeData:
     )
     next_line = line_mapping.pop_additional_line(len(code.co_code))
     return CodeData(
-        blocks,
-        next_line,
-        first_line_number_override,
-        additional_names,
-        additional_varnames,
-        additional_constants,
-        block_type,
-        code.co_freevars,
-        code.co_stacksize,
-        flags_data,
-        code.co_filename,
-        code.co_name,
+        blocks=blocks,
+        _additional_line=next_line,
+        first_line_number=code.co_firstlineno,
+        _additional_names=additional_names,
+        _additional_varnames=additional_varnames,
+        _additional_constants=additional_constants,
+        type=block_type,
+        freevars=code.co_freevars,
+        stacksize=code.co_stacksize,
+        flags=flags_data,
+        filename=code.co_filename,
+        name=code.co_name,
     )
 
 
@@ -127,11 +126,12 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
     flags = from_flags_data(flags_data)
 
-    first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
+    line_mapping.modify_line_offsets(-code_data.first_line_number)
 
     line_table = from_line_mapping(line_mapping)
     nlocals = len(varnames)
     freevars = code_data.freevars
+    first_line_no = code_data.first_line_number
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):

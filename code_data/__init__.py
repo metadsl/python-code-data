@@ -42,14 +42,31 @@ class CodeData(DataclassHideDefault):
     # Bytecode instructions
     blocks: Blocks = field(metadata={"positional": True})
 
+    # name of file in which this code object was created
+    filename: str
+
+    # the first line number of the code object
+    first_line_number: int
+
+    # name with which this code object was defined
+    name: str
+
+    # virtual machine stack space required
+    stacksize: int
+
+    # The type of block this is
+    type: BlockType = field(default=None)
+
+    # tuple of names of free variables (referenced via a function’s closure)
+    freevars: tuple[str, ...] = field(default=())
+
+    # code flags
+    flags: FlagsData = field(default_factory=frozenset)
+
     # On Python < 3.10 sometimes there is a line mapping for an additional line
     # for the bytecode after the last one in the code, for an instruction which was
     # compiled away. Include this so we can represent the line mapping faithfully.
     _additional_line: Optional[AdditionalLine] = field(default=None)
-
-    # The first line number to use for the bytecode, if it doesn't match
-    # the first line number in the line table.
-    _first_line_number_override: Optional[int] = field(default=None)
 
     # Additional names to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
@@ -62,24 +79,6 @@ class CodeData(DataclassHideDefault):
     # Additional constants to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
     _additional_constants: AdditionalConstants = field(default=tuple())
-
-    # The type of block this is
-    type: BlockType = field(default=None)
-
-    # tuple of names of free variables (referenced via a function’s closure)
-    freevars: tuple[str, ...] = field(default=())
-
-    # virtual machine stack space required
-    stacksize: int = field(default=1)
-
-    # code flags
-    flags: FlagsData = field(default_factory=frozenset)
-
-    # name of file in which this code object was created
-    filename: str = field(default="<string>")
-
-    # name with which this code object was defined
-    name: str = field(default="<module>")
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
