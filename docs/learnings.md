@@ -26,4 +26,19 @@ Yes all code data with args are functions!
 
 ## `co_freevars` and `co_cellvars`
 
-The list of free variables. It is accessed in the evaluation loop by `LOAD_CLOSURE`, `DELETE_CLOSURE`, and `STORE_CLOSURE`.
+If we look in `dis` we see that any of the "hasfree" commands will index into `cell_names = co.co_cellvars + co.co_freevars`.
+
+The ones marked as using it are:
+
+- `LOAD_CLOSURE`
+- `LOAD_DEREF`
+- `STORE_DEREF`
+- `DELETE_DEREF`
+- `LOAD_CLASSDEREF`
+
+Let's take a look at `ceval.c` to see where they are used.
+
+`LOAD_CLASSDEREF` is the clearest, in that it requires the arg to index into `co_freevars`
+and be larger than `co_cellvars`.
+
+The rest all index into `freevars` directly, which is defined as `f->f_localsplus + co->co_nlocals`.
