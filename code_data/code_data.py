@@ -62,8 +62,6 @@ def to_code_data(code: CodeType) -> CodeData:
         blocks,
         additional_names,
         additional_varnames,
-        additional_freevars,
-        additional_cellvars,
         additional_constants,
     ) = bytes_to_blocks(
         code.co_code,
@@ -84,9 +82,8 @@ def to_code_data(code: CodeType) -> CodeData:
         additional_names,
         additional_varnames,
         additional_constants,
-        additional_freevars,
-        additional_cellvars,
         block_type,
+        code.co_freevars,
         code.co_stacksize,
         flags_data,
         code.co_filename,
@@ -99,21 +96,12 @@ def from_code_data(code_data: CodeData) -> CodeType:
     flags_data = code_data.flags
     if isinstance(code_data.type, FunctionBlock):
         flags_data = flags_data | FN_FLAGS
-    (
-        code,
-        line_mapping,
-        names,
-        varnames,
-        freevars,
-        cellvars,
-        constants,
-    ) = blocks_to_bytes(
+    (code, line_mapping, names, varnames, cellvars, constants) = blocks_to_bytes(
         code_data.blocks,
         code_data._additional_names,
         code_data._additional_varnames,
-        code_data._additional_freevars,
-        code_data._additional_cellvars,
         code_data._additional_constants,
+        code_data.freevars,
         code_data.type,
     )
 
@@ -143,6 +131,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
     line_table = from_line_mapping(line_mapping)
     nlocals = len(varnames)
+    freevars = code_data.freevars
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):

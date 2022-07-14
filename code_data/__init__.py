@@ -63,11 +63,11 @@ class CodeData(DataclassHideDefault):
     # Mapping of index in the names list to the name
     _additional_constants: AdditionalConstants = field(default=tuple())
 
-    _additional_freevars: AdditionalFreevars = field(default=())
-    _additional_cellvars: AdditionalCellvars = field(default=())
-
     # The type of block this is
     type: BlockType = field(default=None)
+
+    # tuple of names of free variables (referenced via a function’s closure)
+    freevars: tuple[str, ...] = field(default=())
 
     # virtual machine stack space required
     stacksize: int = field(default=1)
@@ -230,7 +230,6 @@ class Freevar(DataclassHideDefault):
     """
 
     freevar: str = field(metadata={"positional": True})
-    _index_override: Optional[int] = field(default=None)
 
 
 @dataclass(frozen=True)
@@ -254,8 +253,6 @@ class Cellvar(DataclassHideDefault):
 AdditionalNames = Tuple["AdditionalName", ...]
 AdditionalConstants = Tuple["AdditionalConstant", ...]
 AdditionalVarnames = Tuple["AdditionalVarname", ...]
-AdditionalFreevars = Tuple["AdditionalFreevar", ...]
-AdditionalCellvars = Tuple["AdditionalCellvar", ...]
 
 
 @dataclass(frozen=True)
@@ -285,26 +282,6 @@ class AdditionalVarname(DataclassHideDefault):
     """
 
     varname: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalFreevar(DataclassHideDefault):
-    """
-    An additional free var argument, that was not used in the instructions
-    """
-
-    freevar: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalCellvar(DataclassHideDefault):
-    """
-    An additional cell var argument, that was not used in the instructions
-    """
-
-    cellvar: str = field(metadata={"positional": True})
     index: int = field(metadata={"positional": True})
 
 

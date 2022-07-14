@@ -12,12 +12,8 @@ from dataclasses import replace
 from typing import Iterable, Tuple
 
 from . import (
-    AdditionalCellvar,
-    AdditionalCellvars,
     AdditionalConstant,
     AdditionalConstants,
-    AdditionalFreevar,
-    AdditionalFreevars,
     AdditionalName,
     AdditionalNames,
     AdditionalVarname,
@@ -48,14 +44,7 @@ def bytes_to_blocks(
     constants: tuple[ConstantValue, ...],
     block_type: BlockType,
     args: Args,
-) -> tuple[
-    Blocks,
-    AdditionalNames,
-    AdditionalVarnames,
-    AdditionalFreevars,
-    AdditionalCellvars,
-    AdditionalConstants,
-]:
+) -> tuple[Blocks, AdditionalNames, AdditionalVarnames, AdditionalConstants]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -76,7 +65,6 @@ def bytes_to_blocks(
     # args
     found_varnames: list[str] = list(args.parameters.keys())
 
-    found_freevars: list[str] = []
     found_cellvars: list[str] = []
 
     # For recording what constants we have found to understand the order of the
@@ -107,7 +95,6 @@ def bytes_to_blocks(
             varnames,
             found_varnames,
             freevars,
-            found_freevars,
             cellvars,
             found_cellvars,
             constants,
@@ -180,22 +167,10 @@ def bytes_to_blocks(
         for i, constant in enumerate(constants)
         if i not in found_constant_indices
     )
-    additional_freevars = tuple(
-        AdditionalFreevar(freevar, i)
-        for i, freevar in enumerate(freevars)
-        if freevar not in found_freevars
-    )
-    additional_cellvars = tuple(
-        AdditionalCellvar(cellvar, i)
-        for i, cellvar in enumerate(cellvars)
-        if cellvar not in found_cellvars
-    )
     return (
         tuple(tuple(instruction for instruction in block) for block in blocks),
         additional_names,
         additional_varnames,
-        additional_freevars,
-        additional_cellvars,
         additional_constants,
     )
 
@@ -204,14 +179,12 @@ def blocks_to_bytes(
     blocks: Blocks,
     additional_names: AdditionalNames,
     additional_varnames: AdditionalVarnames,
-    additional_freevars: AdditionalFreevars,
-    additional_cellvars: AdditionalCellvars,
     additional_consts: AdditionalConstants,
+    freevars: tuple[str, ...],
     block_type: BlockType,
 ) -> Tuple[
     bytes,
     LineMapping,
-    tuple[str, ...],
     tuple[str, ...],
     tuple[str, ...],
     tuple[str, ...],
@@ -238,9 +211,6 @@ def blocks_to_bytes(
         else ()
     )
     varname_final_positions: dict[int, int] = {i: i for i in range(len(varnames))}
-
-    freevars: list[str] = []
-    freevar_final_positions: dict[int, int] = {}
 
     cellvars: list[str] = []
     cellvar_final_positions: dict[int, int] = {}
@@ -274,7 +244,6 @@ def blocks_to_bytes(
                         varnames,
                         varname_final_positions,
                         freevars,
-                        freevar_final_positions,
                         cellvars,
                         cellvar_final_positions,
                         constants,
@@ -333,10 +302,6 @@ def blocks_to_bytes(
         for _, i in sorted(varname_final_positions.items(), key=lambda x: x[0])
     ]
 
-    for additional_cellvar in additional_cellvars:
-        i, name = additional_cellvar.index, additional_cellvar.cellvar
-        cellvars.append(name)
-        cellvar_final_positions[i] = len(cellvars) - 1
     cellvars = [
         cellvars[i]
         for _, i in sorted(cellvar_final_positions.items(), key=lambda x: x[0])
@@ -349,15 +314,6 @@ def blocks_to_bytes(
             arg = instruction.arg
             if isinstance(arg, Freevar):
                 args[block_index, instruction_index] += len(cellvars)
-
-    for additional_freevar in additional_freevars:
-        i, name = additional_freevar.index, additional_freevar.freevar
-        freevars.append(name)
-        freevar_final_positions[i] = len(freevars) - 1
-    freevars = [
-        freevars[i]
-        for _, i in sorted(freevar_final_positions.items(), key=lambda x: x[0])
-    ]
 
     # Add additional consts to the constants and add final positions
     for additional_constant in additional_consts:
@@ -400,7 +356,6 @@ def blocks_to_bytes(
         line_mapping,
         tuple(names),
         tuple(varnames),
-        tuple(freevars),
         tuple(cellvars),
         tuple(constants),
     )
@@ -415,7 +370,6 @@ def to_arg(
     varnames: tuple[str, ...],
     found_varnames: list[str],
     freevars: tuple[str, ...],
-    found_freevars: list[str],
     cellvars: tuple[str, ...],
     found_cellvars: list[str],
     consts: tuple[ConstantValue, ...],
@@ -451,14 +405,7 @@ def to_arg(
             wrong_position = found_cellvars.index(cellvar) != arg
             return Cellvar(cellvar, arg if wrong_position else None)
         # Index into freevars with remaining arg
-        arg -= len(cellvars)
-        freevar = freevars[arg]
-        # Check if its the proper position
-        if freevar not in found_freevars:
-            found_freevars.append(freevar)
-        wrong_position = found_freevars.index(freevar) != arg
-        return Freevar(freevar, arg if wrong_position else None)
-
+        return Freevar(freevars[arg - len(cellvars)])
     elif opcode in dis.hasconst:
         found_constant_indices.add(arg)
         constant = consts[arg]
@@ -476,8 +423,7 @@ def from_arg(
     name_final_positions: dict[int, int],
     varnames: list[str],
     varnames_final_positions: dict[int, int],
-    freevars: list[str],
-    freevars_final_positions: dict[int, int],
+    freevars: tuple[str, ...],
     cellvars: list[str],
     cellvars_final_positions: dict[int, int],
     constants: list[ConstantValue],
@@ -503,12 +449,7 @@ def from_arg(
         varnames_final_positions[final_index] = index
         return final_index
     if isinstance(arg, Freevar):
-        if arg.freevar not in freevars:
-            freevars.append(arg.freevar)
-        index = freevars.index(arg.freevar)
-        final_index = index if arg._index_override is None else arg._index_override
-        freevars_final_positions[final_index] = index
-        return final_index
+        return freevars.index(arg.freevar)
     if isinstance(arg, Cellvar):
         if arg.cellvar not in cellvars:
             cellvars.append(arg.cellvar)
