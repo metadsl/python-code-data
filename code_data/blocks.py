@@ -333,15 +333,6 @@ def blocks_to_bytes(
         for _, i in sorted(varname_final_positions.items(), key=lambda x: x[0])
     ]
 
-    for additional_freevar in additional_freevars:
-        i, name = additional_freevar.index, additional_freevar.freevar
-        freevars.append(name)
-        freevar_final_positions[i] = len(freevars) - 1
-    freevars = [
-        freevars[i]
-        for _, i in sorted(freevar_final_positions.items(), key=lambda x: x[0])
-    ]
-
     for additional_cellvar in additional_cellvars:
         i, name = additional_cellvar.index, additional_cellvar.cellvar
         cellvars.append(name)
@@ -349,6 +340,23 @@ def blocks_to_bytes(
     cellvars = [
         cellvars[i]
         for _, i in sorted(cellvar_final_positions.items(), key=lambda x: x[0])
+    ]
+
+    # Now that we know the total number of cellvars, incremement all the freevar
+    # indices by the number of cellvars, for each arg
+    for block_index, block in enumerate(blocks):
+        for instruction_index, instruction in enumerate(block):
+            arg = instruction.arg
+            if isinstance(arg, Freevar):
+                args[block_index, instruction_index] += len(cellvars)
+
+    for additional_freevar in additional_freevars:
+        i, name = additional_freevar.index, additional_freevar.freevar
+        freevars.append(name)
+        freevar_final_positions[i] = len(freevars) - 1
+    freevars = [
+        freevars[i]
+        for _, i in sorted(freevar_final_positions.items(), key=lambda x: x[0])
     ]
 
     # Add additional consts to the constants and add final positions
