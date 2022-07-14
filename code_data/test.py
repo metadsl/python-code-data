@@ -88,7 +88,12 @@ def test_modules():
     # list of (name, source) tuples
     failures: list[tuple[str, str]] = []
 
-    with rich.progress.Progress() as progress:
+    with rich.progress.Progress(
+        *rich.progress.Progress.get_default_columns(),
+        rich.progress.TimeElapsedColumn(),
+        rich.progress.MofNCompleteColumn(),
+        rich.progress.TransferSpeedColumn(),
+    ) as progress:
         modules = track_unknown_length(progress, module_codes(), "1. Loading modules")
 
         for name, source, code in progress.track(
@@ -351,7 +356,7 @@ def co_lines_to_mapping(
     return LineMapping(offset_to_line)
 
 
-def track_unknown_length(progress, iterable, description):
+def track_unknown_length(progress: rich.progress.Progress, iterable, description):
     """
     Version of Rich's track which supports iterable's of unknown length.
     """
@@ -360,5 +365,5 @@ def track_unknown_length(progress, iterable, description):
     for x in iterable:
         progress.update(t, advance=1)
         list_.append(x)
-
+    progress.update(t, total=len(list_))
     return list_
