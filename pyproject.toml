@@ -70,7 +70,8 @@ check_untyped_defs = true
 strict_equality = true
 warn_unused_configs = true
 exclude = [
-  '^docs/conf\.py$'
+  '^docs/conf\.py$',
+  '^scripts/.*'
 ]
 
 
