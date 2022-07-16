@@ -68,7 +68,7 @@ def bytes_to_blocks(
     found_names = ToArgs(names)
     # We count all the arg names as "found", since we will always preserve them in the
     # args
-    found_varnames = ToArgs(varnames, list(range(len(args.parameters))))
+    found_varnames = ToArgs(varnames, {i: i for i in range(len(args.parameters))})
     found_cellvars = ToArgs(cellvars)
     found_constants = ToArgs(constants)
 
@@ -389,12 +389,14 @@ T = TypeVar("T")
 @dataclass
 class ToArgs(Generic[T]):
     _args: tuple[T, ...]
-    _found_i: list[int] = field(default_factory=list)
+    # Mapping of the actual index argument to the position it was
+    # found
+    _index_to_order: dict[int, int] = field(default_factory=dict)
 
     def found_index(self, index: int) -> tuple[T, Optional[int]]:
-        if index not in self._found_i:
-            self._found_i.append(index)
-        wrong_position = self._found_i.index(index) != index
+        if index not in self._index_to_order:
+            self._index_to_order[index] = len(self._args)
+        wrong_position = self._index_to_order[index] != index
         return self._args[index], index if wrong_position else None
 
     def __len__(self) -> int:
@@ -402,7 +404,7 @@ class ToArgs(Generic[T]):
 
     def additional_args(self) -> Iterable[tuple[int, T]]:
         for i, arg in enumerate(self._args):
-            if i not in self._found_i:
+            if i not in self._index_to_order:
                 yield i, arg
 
 
