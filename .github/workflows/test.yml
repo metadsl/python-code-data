@@ -27,7 +27,7 @@ jobs:
       - run: pip install -e . -r requirements.test.txt
       # TODO: Enable dev mode for Python
       # https://docs.python.org/3/library/devmode.html#devmode
-      - run: pytest code_data --durations=0
+      - run: pytest code_data
       - name: Commit and push failing example
         if: failure()
         run: |
