@@ -40,6 +40,11 @@ def to_code_data(code: CodeType) -> CodeData:
             flags_data=flags_data,
         )
     )
+    assert ("NOFREE" in flags_data) == (
+        (not code.co_freevars) and (not code.co_cellvars)
+    ), "NOFREE is set if and only if there are no cellvars and no freevars"
+
+    flags_data -= {"NOFREE"}
 
     # TODO: Make this special type constructor?
     fn_flags = flags_data & FN_FLAGS
@@ -62,12 +67,15 @@ def to_code_data(code: CodeType) -> CodeData:
         blocks,
         additional_names,
         additional_varnames,
+        additional_cellvars,
         additional_constants,
     ) = bytes_to_blocks(
         code.co_code,
         line_mapping,
         code.co_names,
         code.co_varnames,
+        code.co_freevars,
+        code.co_cellvars,
         constants,
         block_type,
         args,
@@ -79,14 +87,14 @@ def to_code_data(code: CodeType) -> CodeData:
         first_line_number_override,
         additional_names,
         additional_varnames,
+        additional_cellvars,
         additional_constants,
         block_type,
+        code.co_freevars,
         code.co_stacksize,
         flags_data,
         code.co_filename,
         code.co_name,
-        code.co_freevars,
-        code.co_cellvars,
     )
 
 
@@ -95,11 +103,13 @@ def from_code_data(code_data: CodeData) -> CodeType:
     flags_data = code_data.flags
     if isinstance(code_data.type, FunctionBlock):
         flags_data = flags_data | FN_FLAGS
-    code, line_mapping, names, varnames, constants = blocks_to_bytes(
+    (code, line_mapping, names, varnames, cellvars, constants) = blocks_to_bytes(
         code_data.blocks,
         code_data._additional_names,
         code_data._additional_varnames,
+        code_data._additional_cellvars,
         code_data._additional_constants,
+        code_data.freevars,
         code_data.type,
     )
 
@@ -122,6 +132,11 @@ def from_code_data(code_data: CodeData) -> CodeType:
         argcount = 0
         posonlyargcount = 0
         kwonlyargcount = 0
+
+    freevars = code_data.freevars
+
+    if not freevars and not cellvars:
+        flags_data |= {"NOFREE"}
 
     flags = from_flags_data(flags_data)
 
@@ -147,8 +162,8 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.name,
             first_line_no,
             line_table,
-            code_data.freevars,
-            code_data.cellvars,
+            freevars,
+            cellvars,
         )
     else:
         if posonlyargcount:
@@ -169,6 +184,6 @@ def from_code_data(code_data: CodeData) -> CodeType:
             code_data.name,
             first_line_no,
             line_table,
-            code_data.freevars,
-            code_data.cellvars,
+            freevars,
+            cellvars,
         )

@@ -36,7 +36,6 @@ class CodeData(DataclassHideDefault):
     meaning all the data is preserved::
 
         assert CodeData.from_code(code).to_code == code
-
     """
 
     # Bytecode instructions
@@ -59,12 +58,17 @@ class CodeData(DataclassHideDefault):
     # This does not include args, which are always included!
     _additional_varnames: AdditionalVarnames = field(default=tuple())
 
+    _additional_cellvars: AdditionalCellvars = field(default=tuple())
+
     # Additional constants to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
     _additional_constants: AdditionalConstants = field(default=tuple())
 
     # The type of block this is
     type: BlockType = field(default=None)
+
+    # tuple of names of free variables (referenced via a function’s closure)
+    freevars: tuple[str, ...] = field(default=())
 
     # virtual machine stack space required
     stacksize: int = field(default=1)
@@ -77,11 +81,6 @@ class CodeData(DataclassHideDefault):
 
     # name with which this code object was defined
     name: str = field(default="<module>")
-
-    # tuple of names of free variables (referenced via a function’s closure)
-    freevars: Tuple[str, ...] = field(default=tuple())
-    # tuple of names of cell variables (referenced by containing scopes)
-    cellvars: Tuple[str, ...] = field(default=tuple())
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
@@ -173,7 +172,7 @@ class Instruction(DataclassHideDefault):
     _line_offsets_override: tuple[int, ...] = field(default=tuple())
 
 
-Arg = Union[int, "Jump", "Name", "Varname", "Constant"]
+Arg = Union[int, "Jump", "Name", "Varname", "Constant", "Freevar", "Cellvar"]
 
 
 @dataclass(frozen=True)
@@ -225,17 +224,36 @@ class Constant(DataclassHideDefault):
     _index_override: Optional[int] = field(default=None)
 
 
+@dataclass(frozen=True)
+class Freevar(DataclassHideDefault):
+    """
+    A freevar argument.
+    """
+
+    freevar: str = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class Cellvar(DataclassHideDefault):
+    """
+    A cellvar argument.
+    """
+
+    cellvar: str = field(metadata={"positional": True})
+    _index_override: Optional[int] = field(default=None)
+
+
 # TODO: Add:
-# 3. a local lookup
 # 5. An unused value
 # 6. Comparison lookup
 # 7. format value
 # 8. Generator kind
-
+# 9. A function lookup
 
 AdditionalNames = Tuple["AdditionalName", ...]
 AdditionalConstants = Tuple["AdditionalConstant", ...]
 AdditionalVarnames = Tuple["AdditionalVarname", ...]
+AdditionalCellvars = Tuple["AdditionalCellvar", ...]
 
 
 @dataclass(frozen=True)
@@ -265,6 +283,16 @@ class AdditionalVarname(DataclassHideDefault):
     """
 
     varname: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class AdditionalCellvar(DataclassHideDefault):
+    """
+    An additional var name argument, that was not used in the instructions
+    """
+
+    cellvar: str = field(metadata={"positional": True})
     index: int = field(metadata={"positional": True})
 
 

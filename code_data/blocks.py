@@ -8,10 +8,12 @@ from __future__ import annotations
 import ctypes
 import dis
 import sys
-from dataclasses import replace
-from typing import Iterable, Tuple
+from dataclasses import dataclass, field, replace
+from typing import Generic, Iterable, Optional, Tuple, TypeVar
 
 from . import (
+    AdditionalCellvar,
+    AdditionalCellvars,
     AdditionalConstant,
     AdditionalConstants,
     AdditionalName,
@@ -22,8 +24,11 @@ from . import (
     Args,
     Blocks,
     BlockType,
+    Cellvar,
     Constant,
     ConstantValue,
+    Freevar,
+    FunctionBlock,
     Instruction,
     Jump,
     Name,
@@ -37,10 +42,14 @@ def bytes_to_blocks(
     line_mapping: LineMapping,
     names: tuple[str, ...],
     varnames: tuple[str, ...],
+    freevars: tuple[str, ...],
+    cellvars: tuple[str, ...],
     constants: tuple[ConstantValue, ...],
     block_type: BlockType,
     args: Args,
-) -> tuple[Blocks, AdditionalNames, AdditionalVarnames, AdditionalConstants]:
+) -> tuple[
+    Blocks, AdditionalNames, AdditionalVarnames, AdditionalCellvars, AdditionalConstants
+]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -54,27 +63,18 @@ def bytes_to_blocks(
     # The targets always includes the first block
     targets_set = {0}
 
-    # For recording what names we have found to understand the order of the names
-    found_names: list[str] = []
-
+    # Record each type of arg, as we find it, so we know which ones are missing at the
+    # end and which are in the wrong order
+    found_names = ToArgs(names)
     # We count all the arg names as "found", since we will always preserve them in the
     # args
-    found_varnames: list[str] = list(args.parameters.keys())
-
-    # For recording what constants we have found to understand the order of the
-    # constants
-    found_constants: list[ConstantValue] = []
-    # Keep a set of the constant indices we have found, so we can check this against
-    # our initial constants at the end to see which we still have to add
-    # We should do the same with names, but checking against found_names works
-    # fine as long as names aren't duplicated, which they don't seem to be in the
-    # same way as constants
-    found_constant_indices: set[int] = set()
+    found_varnames = ToArgs(varnames, {i: i for i in range(len(args.parameters))})
+    found_cellvars = ToArgs(cellvars)
+    found_constants = ToArgs(constants)
 
     # If we have a function block and a docstring, the first constant is the docstring.
     if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
-        found_constants.append(block_type.docstring)
-        found_constant_indices.add(0)
+        found_constants.found_index(0)
 
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
 
@@ -84,13 +84,11 @@ def bytes_to_blocks(
             opcode,
             arg,
             next_offset,
-            names,
             found_names,
-            varnames,
             found_varnames,
-            constants,
+            freevars,
+            found_cellvars,
             found_constants,
-            found_constant_indices,
         )
         if isinstance(processed_arg, Jump):
             targets_set.add(processed_arg.target)
@@ -144,24 +142,23 @@ def bytes_to_blocks(
         block.append(instruction)
 
     additional_names = tuple(
-        AdditionalName(name, i)
-        for i, name in enumerate(names)
-        if name not in found_names
+        AdditionalName(name, i) for i, name in found_names.additional_args()
     )
     additional_varnames = tuple(
-        AdditionalVarname(name, i)
-        for i, name in enumerate(varnames)
-        if name not in found_varnames
+        AdditionalVarname(name, i) for i, name in found_varnames.additional_args()
+    )
+    additional_cellvars = tuple(
+        AdditionalCellvar(name, i) for i, name in found_cellvars.additional_args()
     )
     additional_constants = tuple(
         AdditionalConstant(constant, i)
-        for i, constant in enumerate(constants)
-        if i not in found_constant_indices
+        for i, constant in found_constants.additional_args()
     )
     return (
         tuple(tuple(instruction for instruction in block) for block in blocks),
         additional_names,
         additional_varnames,
+        additional_cellvars,
         additional_constants,
     )
 
@@ -170,10 +167,17 @@ def blocks_to_bytes(
     blocks: Blocks,
     additional_names: AdditionalNames,
     additional_varnames: AdditionalVarnames,
+    additional_cellvars: AdditionalCellvars,
     additional_consts: AdditionalConstants,
+    freevars: tuple[str, ...],
     block_type: BlockType,
 ) -> Tuple[
-    bytes, LineMapping, tuple[str, ...], tuple[str, ...], tuple[ConstantValue, ...]
+    bytes,
+    LineMapping,
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[ConstantValue, ...],
 ]:
     from . import FunctionBlock
 
@@ -185,27 +189,19 @@ def blocks_to_bytes(
     # Mapping of block index, instruction index, to integer arg values
     args: dict[tuple[int, int], int] = {}
 
-    # List of names we have collected from the instructions
-    names: list[str] = []
-    # Mapping of name index to final name positions
-    name_final_positions: dict[int, int] = {}
+    names = FromArgs[str]()
+    varnames = FromArgs[str]()
+    cellvars = FromArgs[str]()
+    constants = FromArgs[ConstantValue]()
 
-    varnames: list[str] = list(
-        block_type.args.parameters.keys()
-        if isinstance(block_type, FunctionBlock)
-        else ()
-    )
-    varname_final_positions: dict[int, int] = {i: i for i in range(len(varnames))}
-
-    # List of constants we have collected from the instructions
-    constants: list[ConstantValue] = []
-    # Mapping of constant index to constant name positions
-    constant_final_positions: dict[int, int] = {}
+    # If we have a function, set the initial varnames to be the args
+    if isinstance(block_type, FunctionBlock):
+        for i, k in enumerate(block_type.args.parameters.keys()):
+            varnames[i] = k
 
     # If it is a function block, we start with the docstring
     if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
-        constants.append(block_type.docstring)
-        constant_final_positions[0] = 0
+        constants[0] = block_type.docstring
 
     # Iterate through all blocks and change jump instructions to offsets
     while changed_instruction_lengths:
@@ -221,12 +217,11 @@ def blocks_to_bytes(
                     arg_value = from_arg(
                         instruction.arg,
                         block_type,
+                        freevars,
                         names,
-                        name_final_positions,
                         varnames,
-                        varname_final_positions,
+                        cellvars,
                         constants,
-                        constant_final_positions,
                     )
                     args[block_index, instruction_index] = arg_value
                 n_instructions = instruction._n_args_override or _instrsize(arg_value)
@@ -262,36 +257,25 @@ def blocks_to_bytes(
                     ):
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
-    # Add additional names to the names and add final positions
+
+    # Add additional args
     for additional_name in additional_names:
-        i, name = additional_name.index, additional_name.name
-        names.append(name)
-        name_final_positions[i] = len(names) - 1
-    # Sort positions by final position
-    names = [
-        names[i] for _, i in sorted(name_final_positions.items(), key=lambda x: x[0])
-    ]
-
+        names[additional_name.index] = additional_name.name
     for additional_varname in additional_varnames:
-        i, name = additional_varname.index, additional_varname.varname
-        varnames.append(name)
-        varname_final_positions[i] = len(varnames) - 1
-    varnames = [
-        varnames[i]
-        for _, i in sorted(varname_final_positions.items(), key=lambda x: x[0])
-    ]
-
-    # Add additional consts to the constants and add final positions
+        varnames[additional_varname.index] = additional_varname.varname
+    for additional_cellvar in additional_cellvars:
+        cellvars[additional_cellvar.index] = additional_cellvar.cellvar
     for additional_constant in additional_consts:
-        i, constant = additional_constant.index, additional_constant.constant
-        constants.append(constant)
-        constant_final_positions[i] = len(constants) - 1
+        constants[additional_constant.index] = additional_constant.constant
 
-    # Sort positions by final position
-    constants = [
-        constants[i]
-        for _, i in sorted(constant_final_positions.items(), key=lambda x: x[0])
-    ]
+    # Now that we know the total number of cellvars, incremement all the freevar
+    # indices by the number of cellvars, for each arg
+    for block_index, block in enumerate(blocks):
+        for instruction_index, instruction in enumerate(block):
+            arg = instruction.arg
+            if isinstance(arg, Freevar):
+                args[block_index, instruction_index] += len(cellvars)
+
     # Finally go assemble the bytes and the line mapping
     bytes_: list[int] = []
     line_mapping = LineMapping()
@@ -316,80 +300,68 @@ def blocks_to_bytes(
                 )
                 bytes_.append((arg_value >> (8 * i)) & 0xFF)
 
-    return bytes(bytes_), line_mapping, tuple(names), tuple(varnames), tuple(constants)
+    return (
+        bytes(bytes_),
+        line_mapping,
+        names.to_tuple(),
+        varnames.to_tuple(),
+        cellvars.to_tuple(),
+        constants.to_tuple(),
+    )
 
 
 def to_arg(
     opcode: int,
     arg: int,
     next_offset: int,
-    names: tuple[str, ...],
-    found_names: list[str],
-    varnames: tuple[str, ...],
-    found_varnames: list[str],
-    consts: tuple[ConstantValue, ...],
-    found_constants: list[ConstantValue],
-    found_constant_indices: set[int],
+    found_names: ToArgs[str],
+    found_varnames: ToArgs[str],
+    freevars: tuple[str, ...],
+    found_cellvars: ToArgs[str],
+    found_constants: ToArgs[ConstantValue],
 ) -> Arg:
     if opcode in dis.hasjabs:
         return Jump((2 if _ATLEAST_310 else 1) * arg, False)
     elif opcode in dis.hasjrel:
         return Jump(next_offset + ((2 if _ATLEAST_310 else 1) * arg), True)
     elif opcode in dis.hasname:
-        name = names[arg]
-        # Check if its the proper position
-        if name not in found_names:
-            found_names.append(name)
-        wrong_position = found_names.index(name) != arg
-        return Name(name, arg if wrong_position else None)
+        return Name(*found_names.found_index(arg))
     elif opcode in dis.haslocal:
-        varname = varnames[arg]
-        # Check if its the proper position
-        if varname not in found_varnames:
-            found_varnames.append(varname)
-        wrong_position = found_varnames.index(varname) != arg
-        return Varname(varname, arg if wrong_position else None)
+        return Varname(*found_varnames.found_index(arg))
+    elif opcode in dis.hasfree:
+        # The cell vars are indexed first then the freevars.
+        is_cellvar = arg < len(found_cellvars)
+        if is_cellvar:
+            return Cellvar(*found_cellvars.found_index(arg))
+        # Index into freevars with remaining arg
+        return Freevar(freevars[arg - len(found_cellvars)])
     elif opcode in dis.hasconst:
-        found_constant_indices.add(arg)
-        constant = consts[arg]
-        if constant not in found_constants:
-            found_constants.append(constant)
-        wrong_position = found_constants.index(constant) != arg
-        return Constant(constant, arg if wrong_position else None)
+        return Constant(*found_constants.found_index(arg))
     return arg
 
 
 def from_arg(
     arg: Arg,
     block_type: BlockType,
-    names: list[str],
-    name_final_positions: dict[int, int],
-    varnames: list[str],
-    varnames_final_positions: dict[int, int],
-    constants: list[ConstantValue],
-    constants_final_positions: dict[int, int],
+    freevars: tuple[str, ...],
+    names: FromArgs[str],
+    varnames: FromArgs[str],
+    cellvars: FromArgs[str],
+    constants: FromArgs[ConstantValue],
 ) -> int:
-    from . import FunctionBlock
 
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
     if isinstance(arg, Name):
-        if arg.name not in names:
-            names.append(arg.name)
-        index = names.index(arg.name)
-        final_index = index if arg._index_override is None else arg._index_override
-        name_final_positions[final_index] = index
-        return final_index
+        return names.add(arg.name, arg._index_override)
     if isinstance(arg, Varname):
-        if arg.varname not in varnames:
-            varnames.append(arg.varname)
-        index = varnames.index(arg.varname)
-        final_index = index if arg._index_override is None else arg._index_override
-        varnames_final_positions[final_index] = index
-        return final_index
+        return varnames.add(arg.varname, arg._index_override)
+    if isinstance(arg, Freevar):
+        return freevars.index(arg.freevar)
+    if isinstance(arg, Cellvar):
+        return cellvars.add(arg.cellvar, arg._index_override)
     if isinstance(arg, Constant):
-
         # If this is the first index, and we have a docstring which is None,
         # and this value is a string, prepend a None instead of a string
         # so that this value is not used as a docstring.
@@ -405,16 +377,69 @@ def from_arg(
         arg_is_string = isinstance(arg.value, str)
         no_override = arg._index_override is None
         if docstring_is_none and first_const and arg_is_string and no_override:
-            constants.append(None)
-            constants_final_positions[0] = 0
+            constants[0] = None
 
-        if arg.value not in constants:
-            constants.append(arg.value)
-        index = constants.index(arg.value)
-        final_index = index if arg._index_override is None else arg._index_override
-        constants_final_positions[final_index] = index
-        return final_index
+        return constants.add(arg.value, arg._index_override)
     return arg
+
+
+T = TypeVar("T")
+
+
+@dataclass
+class ToArgs(Generic[T]):
+    _args: tuple[T, ...]
+    # Mapping of the actual index argument to the position it was
+    # found
+    _index_to_order: dict[int, int] = field(default_factory=dict)
+
+    def found_index(self, index: int) -> tuple[T, Optional[int]]:
+        if index not in self._index_to_order:
+            self._index_to_order[index] = len(self._args)
+        wrong_position = self._index_to_order[index] != index
+        return self._args[index], index if wrong_position else None
+
+    def __len__(self) -> int:
+        return len(self._args)
+
+    def additional_args(self) -> Iterable[tuple[int, T]]:
+        for i, arg in enumerate(self._args):
+            if i not in self._index_to_order:
+                yield i, arg
+
+
+@dataclass
+class FromArgs(Generic[T]):
+    _i_to_arg: dict[int, T] = field(default_factory=dict)
+    _arg_to_i: dict[T, int] = field(default_factory=dict)
+
+    def __setitem__(self, i: int, arg: T) -> None:
+        if i in self._i_to_arg:
+            assert self._i_to_arg[i] == arg
+        self._i_to_arg[i] = arg
+        self._arg_to_i[arg] = i
+
+    def __len__(self) -> int:
+        return len(self._i_to_arg)
+
+    def __bool__(self) -> bool:
+        return bool(self._i_to_arg)
+
+    def to_tuple(self) -> Tuple[T, ...]:
+        return tuple(v for _, v, in sorted(self._i_to_arg.items()))
+
+    def add(self, arg: T, index_override: Optional[int]) -> int:
+        """
+        Add an argument, returning it's final index
+        """
+        if index_override is not None:
+            self[index_override] = arg
+            return index_override
+        if arg in self._arg_to_i:
+            return self._arg_to_i[arg]
+        index = len(self)
+        self[index] = arg
+        return index
 
 
 def verify_block(blocks: Blocks) -> None:
@@ -429,8 +454,6 @@ def verify_block(blocks: Blocks) -> None:
             if isinstance(arg, Jump):
                 assert arg.target in range(len(blocks)), "Jump target is out of range"
 
-
-# TODO: Possibly replace all these with `_additional_args` and use the args?
 
 # Bytecode instructions jumps refer to the instruction offset, instead of byte
 # offset in Python >= 3.10 due to this PR https://github.com/python/cpython/pull/25069
