@@ -3,7 +3,7 @@ import importlib.util
 import code_data
 
 print("Loading code...")
-module_name = "rich._emoji_codes"
+module_name = "test.datetimetester"
 spec = importlib.util.find_spec(module_name)
 code = spec.loader.get_code(module_name)  # type: ignore
 
