@@ -7,7 +7,7 @@ import hypothesmith
 from hypothesis import HealthCheck, given, settings
 from pytest import mark, param
 
-from .verify_code import verify_code
+from .test_verify_code import verify_code
 
 NEWLINE = "\n"
 EXAMPLES = [

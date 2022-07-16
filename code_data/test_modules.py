@@ -5,7 +5,7 @@ from pytest import mark, param
 
 from .module_codes import module_codes
 from .test import EXAMPLES_DIR
-from .verify_code import verify_code
+from .test_verify_code import verify_code
 
 MODULES = list(module_codes())
 
