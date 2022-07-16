@@ -40,6 +40,11 @@ def to_code_data(code: CodeType) -> CodeData:
             flags_data=flags_data,
         )
     )
+    assert ("NOFREE" in flags_data) == (
+        (not code.co_freevars) and (not code.co_cellvars)
+    ), "NOFREE is set if and only if there are no cellvars and no freevars"
+
+    flags_data -= {"NOFREE"}
 
     # TODO: Make this special type constructor?
     fn_flags = flags_data & FN_FLAGS
@@ -62,6 +67,7 @@ def to_code_data(code: CodeType) -> CodeData:
         blocks,
         additional_names,
         additional_varnames,
+        additional_cellvars,
         additional_constants,
     ) = bytes_to_blocks(
         code.co_code,
@@ -81,6 +87,7 @@ def to_code_data(code: CodeType) -> CodeData:
         first_line_number_override,
         additional_names,
         additional_varnames,
+        additional_cellvars,
         additional_constants,
         block_type,
         code.co_freevars,
@@ -100,6 +107,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
         code_data.blocks,
         code_data._additional_names,
         code_data._additional_varnames,
+        code_data._additional_cellvars,
         code_data._additional_constants,
         code_data.freevars,
         code_data.type,
@@ -125,13 +133,17 @@ def from_code_data(code_data: CodeData) -> CodeType:
         posonlyargcount = 0
         kwonlyargcount = 0
 
+    freevars = code_data.freevars
+
+    if not freevars and not cellvars:
+        flags_data |= {"NOFREE"}
+
     flags = from_flags_data(flags_data)
 
     first_line_no = line_mapping.trim_first_line(code_data._first_line_number_override)
 
     line_table = from_line_mapping(line_mapping)
     nlocals = len(varnames)
-    freevars = code_data.freevars
     # https://github.com/python/cpython/blob/cd74e66a8c420be675fd2fbf3fe708ac02ee9f21/Lib/test/test_code.py#L217-L232
     # Only include posonlyargcount on 3.8+
     if sys.version_info >= (3, 8):

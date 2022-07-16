@@ -39,6 +39,15 @@ EXAMPLES = [
     ),
     param("_ = 0j", id="complex"),
     # param("class G: pass\n" * 1006, id="many classes"),
+    param(
+        """
+def fn():
+    return
+    def i():
+        i()
+""",
+        id="unused cellvar",
+    ),
 ]
 # Read all test files from directory
 EXAMPLES_DIR = pathlib.Path(__file__).parent / "test_minimized"

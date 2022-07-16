@@ -34,34 +34,32 @@ def verify_code(code: CodeType, debug=True) -> None:
 
     resulting_code = code_data.to_code()
 
-    verify_normalize(code_data)
-
     # If we aren't debugging just assert they are equal
     if not debug:
         assert code == resulting_code
-        return
     # Otherwise, we want to get a more granular error message, if possible
-    if code == resulting_code:
-        return
+    elif code != resulting_code:
+        # Otherwise, we start analyzing the code in more granular ways to try to narrow
+        # down which part of the code object is different.
 
-    # Otherwise, we start analyzing the code in more granular ways to try to narrow
-    # down which part of the code object is different.
+        # First, we check if the primitives are the same, minus the line table
+        assert code_to_primitives(code) == code_to_primitives(resulting_code)
 
-    # First, we check if the primitives are the same, minus the line table
-    assert code_to_primitives(code) == code_to_primitives(resulting_code)
+        # If they are the same, we can check if the line table is the same
+        verify_line_mapping(code, resulting_code)
 
-    # If they are the same, we can check if the line table is the same
-    verify_line_mapping(code, resulting_code)
+        # If the line table is the same, we can verify that the constant keys are the
+        # same
+        verify_constant_keys(code, resulting_code)
 
-    # If the line table is the same, we can verify that the constant keys are the same
-    verify_constant_keys(code, resulting_code)
+        # If all those are the same, then we aren't sure why the code objects are
+        # different and just assert they are equal
+        assert code == resulting_code
 
-    # If all those are the same, then we aren't sure why the code objects are different
-    # and just assert they are equal
-    assert code == resulting_code
+        # We used to compare the marhshalled bytes as well, but this was unstable
+        # due to whether the constants had refernces to them, so we disabled it
 
-    # We used to compare the marhshalled bytes as well, but this was unstable
-    # due to whether the constants had refernces to them, so we disabled it
+    verify_normalize(code_data)
 
 
 def verify_normalize(code_data: CodeData) -> None:

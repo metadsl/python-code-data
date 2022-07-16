@@ -36,7 +36,6 @@ class CodeData(DataclassHideDefault):
     meaning all the data is preserved::
 
         assert CodeData.from_code(code).to_code == code
-
     """
 
     # Bytecode instructions
@@ -58,6 +57,8 @@ class CodeData(DataclassHideDefault):
     # Additional varnames to include, which do not appear in any instructions.
     # This does not include args, which are always included!
     _additional_varnames: AdditionalVarnames = field(default=tuple())
+
+    _additional_cellvars: AdditionalCellvars = field(default=tuple())
 
     # Additional constants to include, which do not appear in any instructions,
     # Mapping of index in the names list to the name
@@ -243,16 +244,16 @@ class Cellvar(DataclassHideDefault):
 
 
 # TODO: Add:
-# 3. a local lookup
 # 5. An unused value
 # 6. Comparison lookup
 # 7. format value
 # 8. Generator kind
-
+# 9. A function lookup
 
 AdditionalNames = Tuple["AdditionalName", ...]
 AdditionalConstants = Tuple["AdditionalConstant", ...]
 AdditionalVarnames = Tuple["AdditionalVarname", ...]
+AdditionalCellvars = Tuple["AdditionalCellvar", ...]
 
 
 @dataclass(frozen=True)
@@ -282,6 +283,16 @@ class AdditionalVarname(DataclassHideDefault):
     """
 
     varname: str = field(metadata={"positional": True})
+    index: int = field(metadata={"positional": True})
+
+
+@dataclass(frozen=True)
+class AdditionalCellvar(DataclassHideDefault):
+    """
+    An additional var name argument, that was not used in the instructions
+    """
+
+    cellvar: str = field(metadata={"positional": True})
     index: int = field(metadata={"positional": True})
 
 
