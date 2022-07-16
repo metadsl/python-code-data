@@ -80,6 +80,7 @@ def main():
     if show_source and source is not None:
         console.print(Syntax(source, "python", line_numbers=True))
     if show_dis:
+        dis.show_code(code)
         dis.dis(code)
     code_data = CodeData.from_code(code)
     if not no_normalize:
@@ -87,4 +88,5 @@ def main():
     console.print(code_data)
     if show_dis_after:
         res = code_data.to_code()
+        dis.show_code(res)
         dis.dis(res)
