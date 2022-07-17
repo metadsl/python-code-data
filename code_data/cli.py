@@ -80,6 +80,7 @@ def main():
     if show_source and source is not None:
         console.print(Syntax(source, "python", line_numbers=True))
     if show_dis:
+        show_code_recursive(code)
         dis.dis(code)
     code_data = CodeData.from_code(code)
     if not no_normalize:
@@ -87,4 +88,14 @@ def main():
     console.print(code_data)
     if show_dis_after:
         res = code_data.to_code()
+        show_code_recursive(res)
         dis.dis(res)
+
+
+def show_code_recursive(code: CodeType):
+    dis.show_code(code)
+    # Print newline
+    print("")
+    for c in code.co_consts:
+        if isinstance(c, CodeType):
+            show_code_recursive(c)

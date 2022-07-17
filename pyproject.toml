@@ -58,9 +58,9 @@ skip_gitignore = true
 extend_skip_glob = ["*/test_minimized/*"]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules"
+addopts = ["--doctest-modules", "--durations=10"]
 norecursedirs = "test_minimized"
-python_files = ["*_test.py", "test.py"]
+python_files = ["*_test.py", "test.py", "test_*.py"]
 
 
 [tool.mypy]
