@@ -29,7 +29,7 @@
   // Run flit build instead of setup.py build
   "build_command": [
     "python -m pip install flit",
-    "python -m flit build --format=sdist",
+    // "python -m flit build --format=sdist",
     "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}"
   ],
 

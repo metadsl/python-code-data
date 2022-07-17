@@ -78,5 +78,5 @@ If you are working on a branch and want to compare performance against main, you
 
 ```shell
 $ pip install asv
-$ asv continuous <branch name>
+$ asv continuous origin/main HEAD
 ```
