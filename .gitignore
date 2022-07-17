@@ -6,4 +6,5 @@ __pycache__
 docs/conf.py
 .module_cache
 *.pickle
-*.json
+python-*.json
+.asv

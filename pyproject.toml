@@ -8,7 +8,7 @@ authors = [
     {name = "Saul Shanabrook", email = "s.shanabrook@gmail.com"}
 ]
 readme = "README.md"
-# TODO: Make rich optional?
+# TODO: #66 Make rich optional?
 dependencies = ["rich"]
 dynamic = ["version", "description"]
 classifiers = [
