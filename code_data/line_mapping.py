@@ -196,7 +196,8 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
     # Iterate over the items, from the end to the begining.
     # If there is a zero and the previous is at the limit,
     # then remove the current, and add it to the previous.
-    time.sleep(1)
+    for i in range(1000000):
+        pass
     for i in range(len(items) - 1, 0, -1):
         item = collapsed_items[i]
         prev_item = collapsed_items[i - 1]
