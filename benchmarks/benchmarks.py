@@ -27,3 +27,11 @@ class Suite:
 
     def time_normalize(self, module_name):
         self.code_data.normalize()
+
+
+if __name__ == "__main__":
+    print("Benchmarking...")
+    s = Suite()
+    p = s.params[0]
+    s.setup(p)
+    s.time_to_code(p)
