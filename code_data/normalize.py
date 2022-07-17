@@ -20,7 +20,6 @@ def normalize(x: T) -> T:
                 _additional_names=tuple(),
                 _additional_varnames=tuple(),
                 _additional_line=None,
-                _first_line_number_override=None,
             ),
         )
     if isinstance(x, Instruction):
