@@ -69,3 +69,14 @@ $ open docs/_build/html/index.html
 ```
 
 Note that this may take a while, since it re-executes the notebooks.
+
+## Benchmarking
+
+We have some benchmarks setup with [airspeed-velocity](https://github.com/airspeed-velocity/asv).
+
+If you are working on a branch and want to compare performance against main, you can run:
+
+```shell
+$ pip install asv
+$ asv continuous <branch name>
+```
