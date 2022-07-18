@@ -48,7 +48,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: pip install asv
-      - run: asv continuous $GITHUB_BASE_REF $GITHUB_REF
+      - run: asv continuous main $GITHUB_HEAD_REF
   # Run docs on here as well as RTD in case we max out the RTD builder
   docs:
     name: docs build
