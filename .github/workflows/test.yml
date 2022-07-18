@@ -45,10 +45,10 @@ jobs:
         with:
           python-version: "3.10"
       - uses: actions/checkout@v3
-      - run: git fetch origin $GITHUB_BASE_REF
+      - run: git fetch origin $GITHUB_BASE_REF $GITHUB_REF
       - run: pip install asv virtualenv
       - run: asv machine --yes
-      - run: asv continuous origin/$GITHUB_BASE_REF HEAD --strict
+      - run: asv continuous origin/$GITHUB_BASE_REF origin/$GITHUB_REF --strict
   # Run docs on here as well as RTD in case we max out the RTD builder
   docs:
     name: docs build
