@@ -9,7 +9,7 @@ from typing import Optional, cast
 from rich.console import Console
 from rich.syntax import Syntax
 
-from code_data.normalize import normalize
+from code_data._normalize import normalize
 
 from . import CodeData
 

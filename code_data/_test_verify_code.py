@@ -8,8 +8,8 @@ from types import CodeType
 from typing import Any, Iterable, Optional, cast
 
 from . import CodeData
-from .blocks import verify_block
-from .line_mapping import (
+from ._blocks import verify_block
+from ._line_mapping import (
     USE_LINETABLE,
     LineMapping,
     bytes_to_items,

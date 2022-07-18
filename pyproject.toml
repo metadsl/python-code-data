@@ -47,7 +47,7 @@ docs = [
 ]
 
 [project.scripts]
-python-code-data = "code_data.cli:main"
+python-code-data = "code_data._cli:main"
 
 [tool.black]
 extend-exclude = '(docs/conf\.py)|(code_data/test_minimized/.*)'
