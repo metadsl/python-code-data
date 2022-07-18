@@ -7,6 +7,8 @@ class Suite:
     params = [
         "rich._emoji_codes",
     ]
+    # Run each benchmark at least 5 times to get a good average
+    min_run_count = 5
 
     def setup(self, module_name):
         spec = importlib.util.find_spec(module_name)
@@ -27,3 +29,11 @@ class Suite:
 
     def time_normalize(self, module_name):
         self.code_data.normalize()
+
+
+if __name__ == "__main__":
+    print("Benchmarking...")
+    s = Suite()
+    p = s.params[0]
+    s.setup(p)
+    s.time_to_code(p)

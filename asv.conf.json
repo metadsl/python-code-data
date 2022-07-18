@@ -4,7 +4,7 @@
   "version": 1,
 
   // The name of the project being benchmarked
-  "project": "python-code-data",
+  "project": "code-data",
 
   // The project's homepage
   "project_url": "http://github.com/metadsl/python-code-data",
@@ -21,12 +21,16 @@
   // Customizable commands for building, installing, and
   // uninstalling the project. See asv.conf.json documentation.
   //
-  "install_command": [
-    "python -mpip install ."
-    // "flit install --deps=none"
-  ],
+  // "install_command": [
+  // "python -mpip install ."
+  // "flit install --deps=none"
+  // ],
   // "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
-  "build_command": [],
+  // Run flit build instead of setup.py build
+  "build_command": [
+    "python -m pip install flit",
+    "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}"
+  ],
 
   // List of branches to benchmark. If not provided, defaults to "master"
   // (for git) or "default" (for mercurial).
@@ -136,7 +140,7 @@
 
   // The directory (relative to the current directory) that benchmarks are
   // stored in.  If not provided, defaults to "benchmarks"
-  "benchmark_dir": "code_data",
+  // "benchmark_dir": "code_data",
 
   // The directory (relative to the current directory) to cache the Python
   // environments in.  If not provided, defaults to "env"
