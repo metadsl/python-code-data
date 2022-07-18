@@ -30,19 +30,21 @@ maintains the full semantics of the code object for Python 3.7-3.10.
 It is meant to be used by anyone trying to understand Python code to build some sort of compiler, for tools like Numba.
 
 ```{code-cell}
+# 1. Install the package, along with rich for pretty printing
+! pip install python-code-data[rich]
 
-# 1. Install rich hooks for prettier printing
+# 2. Install rich hooks for prettier printing
 from rich import pretty
 pretty.install()
 
 
-# 2. Get a code object
+# 3. Get a code object
 def fn(x):
     y = x + 1
     return y
 
 
-# 3. Convert it to a dataclass!
+# 4. Convert it to a dataclass!
 from code_data import CodeData
 
 CodeData.from_code(fn.__code__)

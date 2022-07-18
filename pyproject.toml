@@ -8,8 +8,7 @@ authors = [
     {name = "Saul Shanabrook", email = "s.shanabrook@gmail.com"}
 ]
 readme = "README.md"
-# TODO: #66 Make rich optional?
-dependencies = ["rich"]
+dependencies = []
 dynamic = ["version", "description"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -28,7 +27,11 @@ Source = "https://github.com/metadsl/python-code-data"
 
 [project.optional-dependencies]
 
-# TODO: in the future don't include this and generate from pre-commit
+rich = [
+    "rich"
+]
+
+# TODO: in the future don't include dev deps and generate from pre-commit
 # into requirements.txt
 dev = [
     "pre-commit",
@@ -37,6 +40,7 @@ dev = [
     "flake8",
     "isort",
 ]
+
 test = [
     "pytest>=3.6.0",
     "hypothesmith"

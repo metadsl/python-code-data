@@ -6,8 +6,18 @@ from os import linesep
 from types import CodeType
 from typing import Optional, cast
 
-from rich.console import Console
-from rich.syntax import Syntax
+try:
+    from rich.console import Console
+    from rich.syntax import Syntax
+except ImportError:
+    # If we can't import rich, just create dummy classes which use the basic printing
+    class Console:  # type: ignore
+        def print(self, *args, **kwargs):
+            print(*args, **kwargs)
+
+    def Syntax(source, language, line_numbers=False):  # type: ignore
+        return source
+
 
 from code_data._normalize import normalize
 

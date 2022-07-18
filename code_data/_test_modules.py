@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import rich.progress
 from pytest import mark, param
 
 from ._test import EXAMPLES_DIR
@@ -39,55 +38,45 @@ def minimize_failure(name: str, source: str):
     and save it as an example to easily retry it later.
     """
     lines = source.splitlines()
-    with rich.progress.Progress(
-        *rich.progress.Progress.get_default_columns(),
-        rich.progress.TimeElapsedColumn(),
-        rich.progress.MofNCompleteColumn(),
-        rich.progress.TransferSpeedColumn(),
-    ) as progress:
 
-        # Try to do a simple minimization of the failure by removing lines
-        # from the end until it passes
-        for i in progress.track(
-            list(reversed(range(1, len(lines)))),
-            description="Trimming end lines",
-        ):
-            minimized_source = "\n".join(lines[:i])
-            # If we can't compile, then skip this source
+    # Try to do a simple minimization of the failure by removing lines
+    # from the end until it passes
+    print("Removing lines from the end until it passes...")
+    for i in reversed(range(1, len(lines))):
+        minimized_source = "\n".join(lines[:i])
+        # If we can't compile, then skip this source
+        try:
+            code = compile(minimized_source, "", "exec")
+        except Exception:
+            continue
+        else:
             try:
-                code = compile(minimized_source, "", "exec")
+                verify_code(code, debug=False)
+            # If this fails, its the new minimal source
             except Exception:
-                continue
+                source = minimized_source
+            # Otherwise, if it passes, we trimmed too much, we are done
             else:
-                try:
-                    verify_code(code, debug=False)
-                # If this fails, its the new minimal source
-                except Exception:
-                    source = minimized_source
-                # Otherwise, if it passes, we trimmed too much, we are done
-                else:
-                    break
-        lines = source.splitlines()
-        for i in progress.track(
-            list(range(1, len(lines))),
-            description="Trimming begining lines",
-        ):
-            minimized_source = "\n".join(lines[i:])
-            # If we can't compile, then skip this source
+                break
+    print("Removing lines from the beginning until it passes...")
+    lines = source.splitlines()
+    for i in range(1, len(lines)):
+        minimized_source = "\n".join(lines[i:])
+        # If we can't compile, then skip this source
+        try:
+            code = compile(minimized_source, "", "exec")
+        except Exception:
+            continue
+        else:
             try:
-                code = compile(minimized_source, "", "exec")
+                verify_code(code, debug=False)
+            # If this fails, its the new minimal source
             except Exception:
-                continue
+                source = minimized_source
+            # Otherwise, if it passes, we trimmed too much, we are done
             else:
-                try:
-                    verify_code(code, debug=False)
-                # If this fails, its the new minimal source
-                except Exception:
-                    source = minimized_source
-                # Otherwise, if it passes, we trimmed too much, we are done
-                else:
-                    break
+                break
     path = EXAMPLES_DIR / f"{name}.py"
     path.write_text(source)
-    progress.console.print(f"Wrote minimized source to {path}")
+    print(f"Wrote minimized source to {path}")
     code = compile(source, str(path), "exec")
