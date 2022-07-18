@@ -1,4 +1,4 @@
-import importlib.util
+import pathlib
 
 import code_data
 
@@ -11,8 +11,13 @@ class Suite:
     min_run_count = 5
 
     def setup(self, module_name):
-        spec = importlib.util.find_spec(module_name)
-        self.code = spec.loader.get_code(module_name)  # type: ignore
+        path = (
+            pathlib.Path(__file__).parent.parent
+            / "code_data"
+            / "_test_minimized"
+            / f"{module_name}.py"
+        )
+        self.code = compile(path.read_text(), str(path), "exec")
         self.code_data = code_data.CodeData.from_code(self.code)
 
     def teardown(self, module_name):
