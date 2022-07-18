@@ -48,7 +48,7 @@ jobs:
       - run: git fetch origin $GITHUB_BASE_REF
       - run: pip install asv virtualenv
       - run: asv machine --yes
-      - run: asv continuous origin/$GITHUB_BASE_REF HEAD
+      - run: asv continuous origin/$GITHUB_BASE_REF HEAD --strict
   # Run docs on here as well as RTD in case we max out the RTD builder
   docs:
     name: docs build
