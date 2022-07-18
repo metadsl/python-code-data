@@ -67,19 +67,8 @@ class CodeData(DataclassHideDefault):
     # compiled away. Include this so we can represent the line mapping faithfully.
     _additional_line: Optional[AdditionalLine] = field(default=None)
 
-    # Additional names to include, which do not appear in any instructions,
-    # Mapping of index in the names list to the name
-    _additional_names: AdditionalNames = field(default=tuple())
-
-    # Additional varnames to include, which do not appear in any instructions.
-    # This does not include args, which are always included!
-    _additional_varnames: AdditionalVarnames = field(default=tuple())
-
-    _additional_cellvars: AdditionalCellvars = field(default=tuple())
-
-    # Additional constants to include, which do not appear in any instructions,
-    # Mapping of index in the names list to the name
-    _additional_constants: AdditionalConstants = field(default=tuple())
+    # Additional args which are not part of the bytecode, but were included in it.
+    _additional_args: AdditionalArgs = field(default=())
 
     @classmethod
     def from_code(cls, code: CodeType) -> CodeData:
@@ -249,50 +238,8 @@ class Cellvar(DataclassHideDefault):
 # 8. Generator kind
 # 9. A function lookup
 
-AdditionalNames = Tuple["AdditionalName", ...]
-AdditionalConstants = Tuple["AdditionalConstant", ...]
-AdditionalVarnames = Tuple["AdditionalVarname", ...]
-AdditionalCellvars = Tuple["AdditionalCellvar", ...]
-
-
-@dataclass(frozen=True)
-class AdditionalName(DataclassHideDefault):
-    """
-    An additional name argument, that was not used in the instructions
-    """
-
-    name: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalConstant(DataclassHideDefault):
-    """
-    An additional name argument, that was not used in the instructions
-    """
-
-    constant: ConstantValue = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalVarname(DataclassHideDefault):
-    """
-    An additional var name argument, that was not used in the instructions
-    """
-
-    varname: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class AdditionalCellvar(DataclassHideDefault):
-    """
-    An additional var name argument, that was not used in the instructions
-    """
-
-    cellvar: str = field(metadata={"positional": True})
-    index: int = field(metadata={"positional": True})
+AdditionalArg = Union[Name, Varname, Cellvar, Constant]
+AdditionalArgs = Tuple[AdditionalArg, ...]
 
 
 # We process each constant into a `ConstantValue`, so that we can represent

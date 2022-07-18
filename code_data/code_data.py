@@ -62,13 +62,7 @@ def to_code_data(code: CodeType) -> CodeData:
         raise ValueError(f"Expected both flags to represent function: {fn_flags}")
 
     # retrieve the blocks and pop off used line mapping
-    (
-        blocks,
-        additional_names,
-        additional_varnames,
-        additional_cellvars,
-        additional_constants,
-    ) = bytes_to_blocks(
+    blocks, additional_args = bytes_to_blocks(
         code.co_code,
         line_mapping,
         code.co_names,
@@ -84,10 +78,7 @@ def to_code_data(code: CodeType) -> CodeData:
         blocks=blocks,
         _additional_line=next_line,
         first_line_number=code.co_firstlineno,
-        _additional_names=additional_names,
-        _additional_varnames=additional_varnames,
-        _additional_cellvars=additional_cellvars,
-        _additional_constants=additional_constants,
+        _additional_args=additional_args,
         type=block_type,
         freevars=code.co_freevars,
         stacksize=code.co_stacksize,
@@ -104,10 +95,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
         flags_data = flags_data | FN_FLAGS
     (code, line_mapping, names, varnames, cellvars, constants) = blocks_to_bytes(
         code_data.blocks,
-        code_data._additional_names,
-        code_data._additional_varnames,
-        code_data._additional_cellvars,
-        code_data._additional_constants,
+        code_data._additional_args,
         code_data.freevars,
         code_data.type,
     )
