@@ -54,7 +54,7 @@ jobs:
           python-version: ${{ matrix.py }}
       - uses: actions/checkout@v2
       - run: pip install asv
-      - run: asv continuous origin/main HEAD
+      - run: asv continuous $GITHUB_BASE_REF $GITHUB_REF
   # Run docs on here as well as RTD in case we max out the RTD builder
   docs:
     name: docs build
