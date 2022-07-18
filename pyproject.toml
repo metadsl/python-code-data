@@ -47,20 +47,20 @@ docs = [
 ]
 
 [project.scripts]
-python-code-data = "code_data.cli:main"
+python-code-data = "code_data._cli:main"
 
 [tool.black]
-extend-exclude = '(docs/conf\.py)|(code_data/test_minimized/.*)'
+extend-exclude = '(docs/conf\.py)|(code_data/_test_minimized/.*)'
 
 [tool.isort]
 profile = "black"
 skip_gitignore = true
-extend_skip_glob = ["*/test_minimized/*"]
+extend_skip_glob = ["*/_test_minimized/*"]
 
 [tool.pytest.ini_options]
 addopts = ["--doctest-modules", "--durations=10"]
-norecursedirs = "test_minimized"
-python_files = ["*_test.py", "test.py", "test_*.py"]
+norecursedirs = "_test_minimized"
+python_files = ["*test*.py"]
 
 
 [tool.mypy]

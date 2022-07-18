@@ -27,7 +27,7 @@ from . import (
     Name,
     Varname,
 )
-from .line_mapping import LineMapping
+from ._line_mapping import LineMapping
 
 
 def bytes_to_blocks(

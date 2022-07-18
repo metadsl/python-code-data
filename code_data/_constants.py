@@ -18,7 +18,7 @@ __all__ = ["to_constant", "from_constant", "InnerConstant"]
 
 
 def to_constant(value: object) -> ConstantValue:
-    from .code_data import CodeData
+    from ._code_data import CodeData
 
     if isinstance(value, CodeType):
         return CodeData.from_code(value)

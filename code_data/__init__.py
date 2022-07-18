@@ -77,7 +77,7 @@ class CodeData(DataclassHideDefault):
 
         :type code: types.CodeType
         """
-        from .code_data import to_code_data
+        from ._code_data import to_code_data
 
         return to_code_data(code)
 
@@ -87,7 +87,7 @@ class CodeData(DataclassHideDefault):
 
         :rtype: types.CodeType
         """
-        from .code_data import from_code_data
+        from ._code_data import from_code_data
 
         return from_code_data(self)
 
@@ -100,7 +100,7 @@ class CodeData(DataclassHideDefault):
         This includes things like the order of the `co_consts` array, the number of
         extended args for some bytecodes, etc.
         """
-        from .normalize import normalize
+        from ._normalize import normalize
 
         return normalize(self)
 
@@ -366,7 +366,7 @@ class Args(DataclassHideDefault):
         """
         Returns the names of the args, in order, mapping to their kind.
         """
-        from .args import args_to_parameters
+        from ._args import args_to_parameters
 
         return args_to_parameters(self)
 

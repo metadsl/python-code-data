@@ -4,11 +4,11 @@ import sys
 from types import CodeType
 
 from . import CodeData, FunctionBlock
-from .args import ArgsInput, args_from_input, args_to_input
-from .blocks import blocks_to_bytes, bytes_to_blocks
-from .constants import from_constant, to_constant
-from .flags_data import from_flags_data, to_flags_data
-from .line_mapping import from_line_mapping, to_line_mapping
+from ._args import ArgsInput, args_from_input, args_to_input
+from ._blocks import blocks_to_bytes, bytes_to_blocks
+from ._constants import from_constant, to_constant
+from ._flags_data import from_flags_data, to_flags_data
+from ._line_mapping import from_line_mapping, to_line_mapping
 
 # Functions should have both of these flags set
 # https://github.com/python/cpython/blob/443370d8acd107da235d2e9758e06ab3583be4ea/Python/compile.c#L5348

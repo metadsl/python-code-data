@@ -7,7 +7,7 @@ import hypothesmith
 from hypothesis import HealthCheck, given, settings
 from pytest import mark, param
 
-from .test_verify_code import verify_code
+from ._test_verify_code import verify_code
 
 NEWLINE = "\n"
 EXAMPLES = [
@@ -50,7 +50,7 @@ def fn():
     ),
 ]
 # Read all test files from directory
-EXAMPLES_DIR = pathlib.Path(__file__).parent / "test_minimized"
+EXAMPLES_DIR = pathlib.Path(__file__).parent / "_test_minimized"
 EXAMPLES += [
     param(path.read_text(), id=path.stem) for path in EXAMPLES_DIR.glob("*.py")
 ]

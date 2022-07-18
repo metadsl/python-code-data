@@ -3,9 +3,9 @@ from __future__ import annotations
 import rich.progress
 from pytest import mark, param
 
+from ._test import EXAMPLES_DIR
+from ._test_verify_code import verify_code
 from .module_codes import module_codes
-from .test import EXAMPLES_DIR
-from .test_verify_code import verify_code
 
 MODULES = list(module_codes())
 
