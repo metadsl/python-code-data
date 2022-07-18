@@ -34,7 +34,7 @@ sphinx:
     # autoapi_type: python
     # # autoapi_python_use_implicit_namespaces: true
     # autoapi_dirs: [../code_data]
-    # autoapi_ignore: ["*_test.py", "*/test_minimized/*"]
+    # autoapi_ignore: ["*_test.py", "*/_test_minimized/*"]
     # autoapi_file_patterns:
     #   - "__init__.py"
     # autoapi_add_toctree_entry: false
