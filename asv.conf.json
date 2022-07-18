@@ -4,7 +4,7 @@
   "version": 1,
 
   // The name of the project being benchmarked
-  "project": "python-code-data",
+  "project": "code-data",
 
   // The project's homepage
   "project_url": "http://github.com/metadsl/python-code-data",
