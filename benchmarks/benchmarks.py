@@ -12,7 +12,7 @@ class Suite:
 
     def setup(self, module_name):
         path = (
-            pathlib.Path(__file__).parent
+            pathlib.Path(__file__).parent.parent
             / "code_data"
             / "_test_minimized"
             / f"{module_name}.py"
