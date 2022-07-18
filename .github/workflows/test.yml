@@ -45,6 +45,8 @@ jobs:
         with:
           python-version: "3.10"
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - run: pip install asv
       - run: asv continuous main HEAD
   # Run docs on here as well as RTD in case we max out the RTD builder
