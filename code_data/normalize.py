@@ -16,9 +16,7 @@ def normalize(x: T) -> T:
             replace(
                 x,
                 blocks=normalize(x.blocks),
-                _additional_constants=tuple(),
-                _additional_names=tuple(),
-                _additional_varnames=tuple(),
+                _additional_args=(),
                 _additional_line=None,
             ),
         )

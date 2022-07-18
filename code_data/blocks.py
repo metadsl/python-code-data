@@ -12,14 +12,7 @@ from dataclasses import dataclass, field, replace
 from typing import Generic, Iterable, Optional, Tuple, TypeVar
 
 from . import (
-    AdditionalCellvar,
-    AdditionalCellvars,
-    AdditionalConstant,
-    AdditionalConstants,
-    AdditionalName,
-    AdditionalNames,
-    AdditionalVarname,
-    AdditionalVarnames,
+    AdditionalArgs,
     Arg,
     Args,
     Blocks,
@@ -47,9 +40,7 @@ def bytes_to_blocks(
     constants: tuple[ConstantValue, ...],
     block_type: BlockType,
     args: Args,
-) -> tuple[
-    Blocks, AdditionalNames, AdditionalVarnames, AdditionalCellvars, AdditionalConstants
-]:
+) -> tuple[Blocks, AdditionalArgs]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
@@ -141,34 +132,21 @@ def bytes_to_blocks(
             )
         block.append(instruction)
 
-    additional_names = tuple(
-        AdditionalName(name, i) for i, name in found_names.additional_args()
-    )
-    additional_varnames = tuple(
-        AdditionalVarname(name, i) for i, name in found_varnames.additional_args()
-    )
-    additional_cellvars = tuple(
-        AdditionalCellvar(name, i) for i, name in found_cellvars.additional_args()
-    )
-    additional_constants = tuple(
-        AdditionalConstant(constant, i)
-        for i, constant in found_constants.additional_args()
+    additonal_args = (
+        tuple(Name(*xs) for xs in found_names.additional_args())
+        + tuple(Varname(*xs) for xs in found_varnames.additional_args())
+        + tuple(Cellvar(*xs) for xs in found_cellvars.additional_args())
+        + tuple(Constant(*xs) for xs in found_constants.additional_args())
     )
     return (
         tuple(tuple(instruction for instruction in block) for block in blocks),
-        additional_names,
-        additional_varnames,
-        additional_cellvars,
-        additional_constants,
+        additonal_args,
     )
 
 
 def blocks_to_bytes(
     blocks: Blocks,
-    additional_names: AdditionalNames,
-    additional_varnames: AdditionalVarnames,
-    additional_cellvars: AdditionalCellvars,
-    additional_consts: AdditionalConstants,
+    additional_args: AdditionalArgs,
     freevars: tuple[str, ...],
     block_type: BlockType,
 ) -> Tuple[
@@ -258,15 +236,9 @@ def blocks_to_bytes(
                         changed_instruction_lengths = True
                     args[block_index, instruction_index] = new_arg_value
 
-    # Add additional args
-    for additional_name in additional_names:
-        names[additional_name.index] = additional_name.name
-    for additional_varname in additional_varnames:
-        varnames[additional_varname.index] = additional_varname.varname
-    for additional_cellvar in additional_cellvars:
-        cellvars[additional_cellvar.index] = additional_cellvar.cellvar
-    for additional_constant in additional_consts:
-        constants[additional_constant.index] = additional_constant.constant
+    # Process all additional arg to record their values
+    for arg in additional_args:
+        from_arg(arg, block_type, freevars, names, varnames, cellvars, constants)
 
     # Now that we know the total number of cellvars, incremement all the freevar
     # indices by the number of cellvars, for each arg
@@ -402,10 +374,10 @@ class ToArgs(Generic[T]):
     def __len__(self) -> int:
         return len(self._args)
 
-    def additional_args(self) -> Iterable[tuple[int, T]]:
-        for i, arg in enumerate(self._args):
+    def additional_args(self) -> Iterable[tuple[T, Optional[int]]]:
+        for i in range(len(self._args)):
             if i not in self._index_to_order:
-                yield i, arg
+                yield self.found_index(i)
 
 
 @dataclass
