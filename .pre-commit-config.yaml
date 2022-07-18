@@ -29,7 +29,7 @@ repos:
         args:
           [
             --annotation-style=line,
-            "--extra=test,docs,dev",
+            "--extra=test,docs,dev,rich",
             --allow-unsafe,
             pyproject.toml,
           ]
@@ -38,7 +38,7 @@ repos:
         args:
           [
             --annotation-style=line,
-            --extra=docs,
+            "--extra=docs,rich",
             --allow-unsafe,
             --output-file=requirements.docs.txt,
             pyproject.toml,
