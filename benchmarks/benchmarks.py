@@ -7,6 +7,8 @@ class Suite:
     params = [
         "rich._emoji_codes",
     ]
+    # Run each benchmark at least 5 times to get a good average
+    min_run_count = 5
 
     def setup(self, module_name):
         spec = importlib.util.find_spec(module_name)
