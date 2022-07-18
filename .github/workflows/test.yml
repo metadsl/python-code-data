@@ -36,6 +36,25 @@ jobs:
           git add code_data/_test_minimized/
           git commit -m "Add failing example from testing on Python ${{ matrix.py}}"
           git push
+  benchmark:
+    name: benchmark ${{ matrix.py }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py:
+          - "3.10"
+          - "3.9"
+          - "3.8"
+          - "3.7"
+    steps:
+      - name: Setup python ${{ matrix.py }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.py }}
+      - uses: actions/checkout@v2
+      - run: pip install asv
+      - run: asv continuous origin/main HEAD
   # Run docs on here as well as RTD in case we max out the RTD builder
   docs:
     name: docs build
