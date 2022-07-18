@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import collections
 import sys
-import time
 from dataclasses import dataclass, field
 from itertools import chain
 from types import CodeType
