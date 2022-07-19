@@ -22,8 +22,8 @@ except ImportError:
 
     class JSON:  # type: ignore
         @classmethod
-        def from_data(cls, data):
-            return dumps(data, indent=2)
+        def from_data(cls, data, **kwargs):
+            return dumps(data, indent=2, **kwargs)
 
 
 from code_data._normalize import normalize
@@ -111,7 +111,7 @@ def main():
     console.print(code_data)
     if json:
         json_data = code_data.to_json_data()
-        console.print(JSON.from_data(json_data))
+        console.print(JSON.from_data(json_data, ensure_ascii=False))
     if show_dis_after:
         res = code_data.to_code()
         show_code_recursive(res)
