@@ -8,7 +8,7 @@ from dis import _get_instructions_bytes  # type: ignore
 from types import CodeType
 from typing import Any, Iterable, Optional, cast
 
-from jsonschema import validate
+import fastjsonschema
 
 from . import JSON_SCHEMA, CodeData
 from ._blocks import verify_block
@@ -66,12 +66,15 @@ def verify_code(code: CodeType, debug=True) -> None:
     verify_json(code_data)
 
 
+validate = fastjsonschema.compile(JSON_SCHEMA)
+
+
 def verify_json(code_data: CodeData) -> None:
     """
     Verify that the JSON serialization of this code object is the same.
     """
     json_data = code_data.to_json_data()
-    validate(instance=json_data, schema=JSON_SCHEMA)
+    validate(json_data)
     resulting_json_data = json.loads(json.dumps(json_data))
     assert json_data == resulting_json_data, "JSON value changed after serialization"
     assert (

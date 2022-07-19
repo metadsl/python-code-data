@@ -44,7 +44,7 @@ dev = [
 test = [
     "pytest>=3.6.0",
     "hypothesmith",
-    "jsonschema",
+    "fastjsonschema",
     "pytest-xdist[psutil]"
 ]
 
