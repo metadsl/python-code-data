@@ -25,6 +25,7 @@ The main entrypoint to our API is the `CodeData` object. You can create it from 
 # Load rich first for prettier output
 from rich import pretty
 pretty.install()
+from code_data import CodeData
 
 def fn(a, b):
     return a + b
