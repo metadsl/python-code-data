@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from base64 import b64decode, b64encode
-from copy import deepcopy
 from dataclasses import fields, is_dataclass
 
 from . import (
@@ -92,7 +91,6 @@ def code_data_from_json(value: object) -> CodeData:
     """
     Parse a JSON value into a CodeData object.
     """
-    value = deepcopy(value)
     if not isinstance(value, dict):
         raise ValueError(f"Expected dict, got {type(value)}")
     if "blocks" in value:
