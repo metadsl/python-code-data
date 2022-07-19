@@ -13,11 +13,9 @@ kernelspec:
   name: python3
 ---
 
-# Example: Analyzing instruction occurances
+# Example: Analyzing flag occurnces by nesing level
 
-For our next example, lets do something a bit more fun. Let's load all installed modules and see what flags are most commonly used!n Let's
-sort the flags by what "level" they were defined at. For example, a module is
-at the top level, a class second level, etc.
+In this example, we will analyze the occurances of flags by nesting level.
 
 First we can load all the code objects for all importable modules, using
 a util written for the tests. In the tests, we use this to verify that
