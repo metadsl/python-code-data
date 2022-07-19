@@ -45,6 +45,9 @@ def to_code_data(code: CodeType) -> CodeData:
 
     flags_data -= {"NOFREE"}
 
+    flags_data -= {"annotations"}
+    annotations = "annotations" in flags_data
+
     # TODO: Make this special type constructor?
     fn_flags = flags_data & FN_FLAGS
     if len(fn_flags) == 0:
@@ -85,6 +88,7 @@ def to_code_data(code: CodeType) -> CodeData:
         flags=flags_data,
         filename=code.co_filename,
         name=code.co_name,
+        future_annotations=annotations,
     )
 
 
@@ -124,6 +128,9 @@ def from_code_data(code_data: CodeData) -> CodeType:
 
     if not freevars and not cellvars:
         flags_data |= {"NOFREE"}
+
+    if code_data.future_annotations:
+        flags_data |= {"annotations"}
 
     flags = from_flags_data(flags_data)
 

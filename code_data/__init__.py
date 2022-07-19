@@ -59,6 +59,9 @@ class CodeData(DataclassHideDefault):
     # code flags
     flags: FlagsData = field(default_factory=frozenset)
 
+    # Whether the annotations future flag is active
+    future_annotations: bool = field(default=False)
+
     # On Python < 3.10 sometimes there is a line mapping for an additional line
     # for the bytecode after the last one in the code, for an instruction which was
     # compiled away. Include this so we can represent the line mapping faithfully.
