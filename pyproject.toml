@@ -43,7 +43,8 @@ dev = [
 
 test = [
     "pytest>=3.6.0",
-    "hypothesmith"
+    "hypothesmith",
+    "jsonschema"
 ]
 
 docs = [

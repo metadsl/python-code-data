@@ -346,12 +346,12 @@ def from_arg(
             isinstance(block_type, FunctionBlock) and block_type.docstring is None
         )
         first_const = not constants
-        arg_is_string = isinstance(arg.value, str)
+        arg_is_string = isinstance(arg.constant, str)
         no_override = arg._index_override is None
         if docstring_is_none and first_const and arg_is_string and no_override:
             constants[0] = None
 
-        return constants.add(arg.value, arg._index_override)
+        return constants.add(arg.constant, arg._index_override)
     return arg
 
 

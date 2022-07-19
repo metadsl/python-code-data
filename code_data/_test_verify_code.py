@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import ctypes
 import dis
+import json
 import sys
 from dis import _get_instructions_bytes  # type: ignore
 from types import CodeType
 from typing import Any, Iterable, Optional, cast
 
-from . import CodeData
+from jsonschema import validate
+
+from . import JSON_SCHEMA, CodeData
 from ._blocks import verify_block
 from ._line_mapping import (
     USE_LINETABLE,
@@ -60,6 +63,20 @@ def verify_code(code: CodeType, debug=True) -> None:
         # due to whether the constants had refernces to them, so we disabled it
 
     verify_normalize(code_data)
+    verify_json(code_data)
+
+
+def verify_json(code_data: CodeData) -> None:
+    """
+    Verify that the JSON serialization of this code object is the same.
+    """
+    json_data = code_data.to_json_data()
+    validate(instance=json_data, schema=JSON_SCHEMA)
+    resulting_json_data = json.loads(json.dumps(json_data))
+    assert json_data == resulting_json_data, "JSON value changed after serialization"
+    assert (
+        CodeData.from_json_data(resulting_json_data) == code_data
+    ), "JSON value results in different code data"
 
 
 def verify_normalize(code_data: CodeData) -> None:

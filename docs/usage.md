@@ -17,13 +17,52 @@ kernelspec:
 
 ## Python API
 
-The overall workflow for using the API involves some part of these steps:
+### `from_code`
 
-1. Get your hands on a [Code object](https://docs.python.org/3/reference/datamodel.html#index-55), like by using `compile`
-2. Turn it into data using .
-3. Modify it, traverse it, or use it for downstream analysis.
-4. Turn the [`CodeData`](code_data.CodeData) back into a real Python code object.
-5. Execute the code object, using `exec`.
+The main entrypoint to our API is the `CodeData` object. You can create it from any Python `CodeType`:
+
+```{code-cell}
+# Load rich first for prettier output
+from rich import pretty
+pretty.install()
+
+def fn(a, b):
+    return a + b
+
+cd = CodeData.from_code(fn.__code__)
+cd
+```
+
+Instead of using Python's built in code object, or the `dis` module, it reduces the amoutn of information to only that which is needed to recreate the code object. So all information about how it happens to be stored on disk, the bytecode offsets for example of each instruction, is ommited, making it simpler to use.
+
+### `normalize`
+
+We are also able to "normalize" the code object, removing pieces of it that are unused. For example, if you have dead code, Python will still include the constants
+that are present in it, even though there is no way they can be accessed:
+
+```{code-cell}
+def fn():
+    if False:
+        return 1
+
+cd = CodeData.from_code(fn.__code__)
+cd
+```
+
+```{code-cell}
+cd.normalize()
+```
+
+### JSON Support
+
+Since the code object is now a simple data structure, we can serialize it to and from JSON. This provides a nice option if you want to analyze Python bytecode in a different language or save it on disk:
+
+```{code-cell}
+code_json = cd.to_json_data()
+assert CodeData.from_json_data(code_json) == cd
+
+code_json
+```
 
 ## Command Line
 
