@@ -2,13 +2,9 @@ import pathlib
 
 import code_data
 
-import
 
 class Suite:
-    params = [
-        "rich._emoji_codes",
-        "numpy.core.tests.test_multiarray"
-    ]
+    params = ["rich._emoji_codes", "numpy.core.tests.test_multiarray"]
     # Run each benchmark at least 5 times to get a good average
     min_run_count = 5
 
@@ -41,6 +37,6 @@ class Suite:
 if __name__ == "__main__":
     print("Benchmarking...")
     s = Suite()
-    p = s.params[0]
+    p = s.params[1]
     s.setup(p)
     s.time_to_code(p)
