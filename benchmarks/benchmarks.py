@@ -2,10 +2,12 @@ import pathlib
 
 import code_data
 
+import
 
 class Suite:
     params = [
         "rich._emoji_codes",
+        "numpy.core.tests.test_multiarray"
     ]
     # Run each benchmark at least 5 times to get a good average
     min_run_count = 5
