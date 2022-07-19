@@ -48,7 +48,7 @@ ipywidgets==7.7.1         # via jupyter-sphinx, myst-nb
 isort==5.10.1             # via code_data (pyproject.toml)
 jedi==0.18.1              # via ipython
 jinja2==3.1.2             # via jupyter-book, jupyter-server, myst-parser, nbconvert, nbdime, notebook, sphinx
-jsonschema==3.2.0         # via jupyter-book, nbformat
+jsonschema==3.2.0         # via code_data (pyproject.toml), jupyter-book, nbformat
 jupyter-book==0.13.0      # via code_data (pyproject.toml)
 jupyter-cache==0.4.3      # via myst-nb
 jupyter-client==7.3.4     # via ipykernel, jupyter-server, nbclient, notebook
