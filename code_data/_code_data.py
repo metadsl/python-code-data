@@ -45,8 +45,8 @@ def to_code_data(code: CodeType) -> CodeData:
 
     flags_data -= {"NOFREE"}
 
-    flags_data -= {"annotations"}
     annotations = "annotations" in flags_data
+    flags_data -= {"annotations"}
 
     # TODO: Make this special type constructor?
     fn_flags = flags_data & FN_FLAGS
