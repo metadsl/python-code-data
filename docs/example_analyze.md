@@ -1,4 +1,4 @@
-### Example: Analyzing instruction occurances
+# Example: Analyzing instruction occurances
 
 For our next example, lets do something a bit more fun. Let's load all installed modules and see what flags are most commonly used!n Let's
 sort the flags by what "level" they were defined at. For example, a module is
