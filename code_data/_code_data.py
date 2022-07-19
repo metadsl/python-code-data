@@ -2,17 +2,24 @@ from __future__ import annotations
 
 import sys
 from types import CodeType
+from typing import cast
 
-from . import CodeData, FunctionBlock
+from . import CodeData, FunctionBlock, FunctionType
 from ._args import ArgsInput, args_from_input, args_to_input
 from ._blocks import blocks_to_bytes, bytes_to_blocks
 from ._constants import from_constant, to_constant
-from ._flags_data import from_flags_data, to_flags_data
+from ._flags_data import FlagsData, from_flags_data, to_flags_data
 from ._line_mapping import from_line_mapping, to_line_mapping
 
 # Functions should have both of these flags set
 # https://github.com/python/cpython/blob/443370d8acd107da235d2e9758e06ab3583be4ea/Python/compile.c#L5348
 FN_FLAGS = {"NEWLOCALS", "OPTIMIZED"}
+
+FN_TYPE_FLAGS = {
+    "ASYNC_GENERATOR",
+    "COROUTINE",
+    "GENERATOR",
+}
 
 
 def to_code_data(code: CodeType) -> CodeData:
@@ -30,7 +37,7 @@ def to_code_data(code: CodeType) -> CodeData:
 
     flags_data = to_flags_data(code.co_flags)
 
-    args, flags_data = args_from_input(
+    args = args_from_input(
         ArgsInput(
             argcount=code.co_argcount,
             posonlyargcount=posonlyargcount,
@@ -48,8 +55,8 @@ def to_code_data(code: CodeType) -> CodeData:
     annotations = "annotations" in flags_data
     flags_data -= {"annotations"}
 
-    nested = "nested" in flags_data
-    flags_data -= {"nested"}
+    nested = "NESTED" in flags_data
+    flags_data -= {"NESTED"}
 
     # TODO: Make this special type constructor?
     fn_flags = flags_data & FN_FLAGS
@@ -62,11 +69,18 @@ def to_code_data(code: CodeType) -> CodeData:
         docstring = (
             constants[0] if constants and isinstance(constants[0], str) else None
         )
-        block_type = FunctionBlock(args, docstring)
+        fn_tp_flags = cast(set[FunctionType], FN_TYPE_FLAGS & flags_data)
+        assert len(fn_tp_flags) in {0, 1}
+        fn_tp = fn_tp_flags.pop() if fn_tp_flags else None
+        if fn_tp:
+            flags_data.remove(fn_tp)
+        block_type = FunctionBlock(args, docstring, fn_tp)
         flags_data -= FN_FLAGS
     else:
         raise ValueError(f"Expected both flags to represent function: {fn_flags}")
 
+    if flags_data:
+        raise ValueError(f"Unknown flags: {flags_data}")
     # retrieve the blocks and pop off used line mapping
     blocks, additional_args = bytes_to_blocks(
         code.co_code,
@@ -88,7 +102,6 @@ def to_code_data(code: CodeType) -> CodeData:
         type=block_type,
         freevars=code.co_freevars,
         stacksize=code.co_stacksize,
-        flags=flags_data,
         filename=code.co_filename,
         name=code.co_name,
         future_annotations=annotations,
@@ -97,10 +110,11 @@ def to_code_data(code: CodeType) -> CodeData:
 
 
 def from_code_data(code_data: CodeData) -> CodeType:
-
-    flags_data = code_data.flags
+    flags_data: FlagsData = set()
     if isinstance(code_data.type, FunctionBlock):
-        flags_data = flags_data | FN_FLAGS
+        flags_data |= FN_FLAGS
+        if code_data.type.type is not None:
+            flags_data |= {code_data.type.type}
     (code, line_mapping, names, varnames, cellvars, constants) = blocks_to_bytes(
         code_data.blocks,
         code_data._additional_args,
@@ -137,7 +151,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
         flags_data |= {"annotations"}
 
     if code_data._nested:
-        flags_data |= {"nested"}
+        flags_data |= {"NESTED"}
 
     flags = from_flags_data(flags_data)
 

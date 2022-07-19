@@ -7,7 +7,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from inspect import _ParameterKind
 from types import CodeType
-from typing import FrozenSet, Iterator, Optional, Tuple, Union
+from typing import FrozenSet, Iterator, Literal, Optional, Tuple, Union
 
 from .dataclass_hide_default import DataclassHideDefault
 
@@ -55,9 +55,6 @@ class CodeData(DataclassHideDefault):
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: tuple[str, ...] = field(default=())
-
-    # code flags
-    flags: FlagsData = field(default_factory=frozenset)
 
     # Whether the annotations future flag is active
     future_annotations: bool = field(default=False)
@@ -146,9 +143,6 @@ class CodeData(DataclassHideDefault):
         yield self
         for code_data in self:
             yield from code_data.all_code_data()
-
-
-FlagsData = FrozenSet[str]
 
 
 # tuple of blocks, each block is a list of instructions.
@@ -410,6 +404,10 @@ class FunctionBlock(DataclassHideDefault):
 
     args: Args = field(default_factory=Args, metadata={"positional": True})
     docstring: Optional[str] = field(default=None)
+    type: FunctionType = field(default=None)
+
+
+FunctionType = Optional[Literal["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"]]
 
 
 @dataclass(frozen=True)
@@ -439,6 +437,10 @@ _definitions = {
                 },
             },
             "docstring": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": ["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"],
+            },
         },
         "description": FunctionBlock.__doc__,
     },
@@ -494,7 +496,7 @@ _definitions = {
             "stacksize": {"type": "integer"},
             "type": {"$ref": "#/definitions/FunctionBlock"},
             "freevars": {"type": "array", "items": {"type": "string"}, "default": []},
-            "flags": {"type": "array", "items": {"type": "string"}, "default": []},
+            "_nested": {"type": "boolean", "default": False},
             "_additional_line": {"$ref": "#/definitions/AdditionalLine"},
             "_additional_args": {
                 "type": "array",
