@@ -1,8 +1,5 @@
 """
 Transform Python code objects into data, and vice versa.
-
-TODO: Move all types here. Move all functions into other files. Make all things methods
-for external usage.
 """
 from __future__ import annotations
 
@@ -96,7 +93,7 @@ class CodeData(DataclassHideDefault):
         """
         Parse a JSON data structure into a CodeData.
 
-        :type json_data: dict
+        The JSON structure must be of the schema `code_data.JSON_SCHEMA`
         """
         from ._json_data import code_data_from_json
 
@@ -105,6 +102,8 @@ class CodeData(DataclassHideDefault):
     def to_json_data(self) -> dict:
         """
         Convert the code data to a JSON data structure.
+
+        The schema of the returned json is available at `code_data.JSON_SCHEMA`
         """
         from ._json_data import code_data_to_json
 
