@@ -418,7 +418,7 @@ class FunctionBlock(DataclassHideDefault):
     type: FunctionType = field(default=None)
 
 
-FunctionType = Optional[Literal["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"]]
+FunctionType = Optional['Literal["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"]']
 
 
 @dataclass(frozen=True)
