@@ -26,6 +26,7 @@ from . import (
     Instruction,
     Jump,
     Name,
+    NoArg,
     Varname,
 )
 from ._constants import to_constant
@@ -187,6 +188,8 @@ def arg_from_json(value: object) -> Arg:
         return Freevar(**value)
     if "cellvar" in value:
         return Cellvar(**value)
+    if "_arg" in value:
+        return NoArg(**value)
     raise ValueError(f"Unsupported arg type: {type(value)}")
 
 

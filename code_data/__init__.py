@@ -548,6 +548,14 @@ _definitions = {
         },
         "description": Jump.__doc__,
     },
+    "NoArg": {
+        "type": "object",
+        "required": [],
+        "properties": {
+            "_arg": {"type": "integer", "default": 0},
+        },
+        "description": NoArg.__doc__,
+    },
     "Name": {
         "type": "object",
         "required": ["name"],
@@ -680,7 +688,7 @@ _definitions = {
     },
     "Instruction": {
         "type": "object",
-        "required": ["name", "arg"],
+        "required": ["name"],
         "properties": {
             "name": {"type": "string"},
             "arg": {
@@ -691,8 +699,10 @@ _definitions = {
                     {"$ref": "#/definitions/Constant"},
                     {"$ref": "#/definitions/Freevar"},
                     {"$ref": "#/definitions/Cellvar"},
+                    {"$ref": "#/definitions/NoArg"},
                     {"type": "integer"},
-                ]
+                ],
+                "default": {"_arg": 0},
             },
             "_n_args_override": {"type": "integer"},
             "line_number": {"type": "integer"},
