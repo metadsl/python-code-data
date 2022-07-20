@@ -40,7 +40,7 @@ class Suite:
         self.code_data.to_json_data()
 
     def time_from_json_data(self, module_name):
-        code_data.CodeData.from_json_data(self.json_data)
+        code_data.CodeData.from_json_data(deepcopy(self.json_data))
 
 
 if __name__ == "__main__":
