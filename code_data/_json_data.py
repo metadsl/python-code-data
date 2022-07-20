@@ -158,8 +158,9 @@ def instruction_from_json(value: object) -> Instruction:
     """
     if not isinstance(value, dict):
         raise ValueError(f"Expected dict, got {type(value)}")
-    value = copy(value)
-    value["arg"] = arg_from_json(value["arg"])
+    if "arg" in value:
+        value = copy(value)
+        value["arg"] = arg_from_json(value["arg"])
     return Instruction(**lists_values_to_tuples(value))
 
 

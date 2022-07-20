@@ -39,8 +39,6 @@ chance of a conflict by only requiring the minimal number of test dependencies t
 with all Python versions. We don't test docs and linting on multiple Python versions, only
 the code.
 
-<!-- TODO: Create these files in pre-commit and switch CI to use them. -->
-
 All of these files are kept up to date via pre-commit hooks that are run in CI.
 
 If you local environment drifts from the pinned version, you can

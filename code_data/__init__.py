@@ -266,7 +266,6 @@ class NoArg(DataclassHideDefault):
 
 
 # TODO: Add:
-# 5. An unused value
 # 6. Comparison lookup
 # 7. format value
 # 8. Generator kind
@@ -390,7 +389,7 @@ class ConstantEllipsis(DataclassHideDefault):
 
 # The type of block this is, as we can infer from the flags.
 # https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
-# TODO: Rename, overlaps with "blocks"
+# TODO: #84 Rename, overlaps with "blocks"
 BlockType = Union["FunctionBlock", None]
 
 

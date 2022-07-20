@@ -58,7 +58,6 @@ parser.add_argument(
 )
 
 
-# TODO: #51 Add tests for CLI
 def main():
     """
     Parse the CLI commands and print the code data.

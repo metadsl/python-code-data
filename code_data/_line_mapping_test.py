@@ -335,7 +335,6 @@ MAPPING_PARAMS = [
         True,
         id="two lines, linetable",
     ),
-    # TODO: Add these tests to collapse
     pytest.param(
         [CollapsedLineTableItem(line_offset=128, bytecode_offset=4)],
         LineMapping(
