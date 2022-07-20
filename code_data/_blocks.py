@@ -18,12 +18,12 @@ from . import (
     Arg,
     Args,
     Blocks,
-    BlockType,
+    TypeOfCode,
     Cellvar,
     Constant,
     ConstantValue,
     Freevar,
-    FunctionBlock,
+    Function,
     Instruction,
     Jump,
     Name,
@@ -41,13 +41,13 @@ def bytes_to_blocks(
     freevars: tuple[str, ...],
     cellvars: tuple[str, ...],
     constants: tuple[ConstantValue, ...],
-    block_type: BlockType,
+    block_type: TypeOfCode,
     args: Args,
 ) -> tuple[Blocks, AdditionalArgs]:
     """
     Parse a sequence of bytes as a sequence of blocks of instructions.
     """
-    from . import FunctionBlock
+    from . import Function
 
     # First, iterate through bytes to make instructions while also making set of all the
     # targets
@@ -67,7 +67,7 @@ def bytes_to_blocks(
     found_constants = ToArgs(constants)
 
     # If we have a function block and a docstring, the first constant is the docstring.
-    if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
+    if isinstance(block_type, Function) and block_type.docstring is not None:
         found_constants.found_index(0)
 
     for opcode, arg, n_args, offset, next_offset in _parse_bytes(b):
@@ -151,7 +151,7 @@ def blocks_to_bytes(
     blocks: Blocks,
     additional_args: AdditionalArgs,
     freevars: tuple[str, ...],
-    block_type: BlockType,
+    block_type: TypeOfCode,
 ) -> Tuple[
     bytes,
     LineMapping,
@@ -160,7 +160,7 @@ def blocks_to_bytes(
     tuple[str, ...],
     tuple[ConstantValue, ...],
 ]:
-    from . import FunctionBlock
+    from . import Function
 
     # First compute mapping from block to offset
     changed_instruction_lengths = True
@@ -176,12 +176,12 @@ def blocks_to_bytes(
     constants = FromArgs[ConstantValue]()
 
     # If we have a function, set the initial varnames to be the args
-    if isinstance(block_type, FunctionBlock):
+    if isinstance(block_type, Function):
         for i, k in enumerate(block_type.args.parameters.keys()):
             varnames[i] = k
 
     # If it is a function block, we start with the docstring
-    if isinstance(block_type, FunctionBlock) and block_type.docstring is not None:
+    if isinstance(block_type, Function) and block_type.docstring is not None:
         constants[0] = block_type.docstring
 
     # Iterate through all blocks and change jump instructions to offsets
@@ -319,7 +319,7 @@ def to_arg(
 
 def from_arg(
     arg: Arg,
-    block_type: BlockType,
+    block_type: TypeOfCode,
     freevars: tuple[str, ...],
     names: FromArgs[str],
     varnames: FromArgs[str],
@@ -349,7 +349,7 @@ def from_arg(
         # We also don't want to uncoditionally use the docstring as the first argument,
         # because list comprehensions don't do this.
         docstring_is_none = (
-            isinstance(block_type, FunctionBlock) and block_type.docstring is None
+            isinstance(block_type, Function) and block_type.docstring is None
         )
         first_const = not constants
         arg_is_string = isinstance(arg.constant, str)
