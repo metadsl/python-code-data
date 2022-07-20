@@ -26,6 +26,7 @@ from . import (
     Instruction,
     Jump,
     Name,
+    NoArg,
     Varname,
 )
 from ._constants import to_constant
@@ -157,8 +158,9 @@ def instruction_from_json(value: object) -> Instruction:
     """
     if not isinstance(value, dict):
         raise ValueError(f"Expected dict, got {type(value)}")
-    value = copy(value)
-    value["arg"] = arg_from_json(value["arg"])
+    if "arg" in value:
+        value = copy(value)
+        value["arg"] = arg_from_json(value["arg"])
     return Instruction(**lists_values_to_tuples(value))
 
 
@@ -187,6 +189,8 @@ def arg_from_json(value: object) -> Arg:
         return Freevar(**value)
     if "cellvar" in value:
         return Cellvar(**value)
+    if "_arg" in value:
+        return NoArg(**value)
     raise ValueError(f"Unsupported arg type: {type(value)}")
 
 

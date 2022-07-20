@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TypeVar, cast
 
-from . import Cellvar, CodeData, Constant, Instruction, Name, Varname
+from . import Cellvar, CodeData, Constant, Instruction, Name, NoArg, Varname
 
 T = TypeVar("T")
 
@@ -40,4 +40,6 @@ def normalize(x: T) -> T:
         return cast(T, replace(x, _index_override=None))
     if isinstance(x, tuple):
         return cast(T, tuple(map(normalize, x)))
+    if isinstance(x, NoArg):
+        return cast(T, NoArg())
     return x

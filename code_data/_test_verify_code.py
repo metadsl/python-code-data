@@ -99,8 +99,6 @@ code_attributes = tuple(
     if name.startswith("co_")
     # Don't compare generated co_lines iterator returned in Python 3.10
     # When co_lntob is removed in 3.12, we need to figured out how to adapt.
-    # TODO: look at how co_lines works and make sure we can duplicate logic for mapping
-    # https://docs.python.org/3/whatsnew/3.10.html?highlight=co_lines#pep-626-precise-line-numbers-for-debugging-and-other-tools
     and name != "co_lines"
     # Also ignore lines
     and name != "co_lnotab" and name != "co_linetable"

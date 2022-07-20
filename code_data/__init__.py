@@ -163,7 +163,7 @@ class Instruction(DataclassHideDefault):
     name: str = field(metadata={"positional": True})
 
     # The integer value of the arg
-    arg: Arg = field(metadata={"positional": True})
+    arg: Arg = field(metadata={"positional": True}, default_factory=lambda: NoArg())
 
     # The number of args, if it differs form the instrsize
     # Note: in Python >= 3.10 we can calculute this from the instruction size,
@@ -182,7 +182,7 @@ class Instruction(DataclassHideDefault):
     _line_offsets_override: tuple[int, ...] = field(default=tuple())
 
 
-Arg = Union[int, "Jump", "Name", "Varname", "Constant", "Freevar", "Cellvar"]
+Arg = Union[int, "Jump", "Name", "Varname", "Constant", "Freevar", "Cellvar", "NoArg"]
 
 
 @dataclass(frozen=True)
@@ -253,8 +253,19 @@ class Cellvar(DataclassHideDefault):
     _index_override: Optional[int] = field(default=None)
 
 
+@dataclass(frozen=True)
+class NoArg(DataclassHideDefault):
+    """
+    Represents an argument for an opcode with an arg.
+
+    It stores the value override, to recreate it byte-for-byte, but this value is
+    unused.
+    """
+
+    _arg: int = field(default=0)
+
+
 # TODO: Add:
-# 5. An unused value
 # 6. Comparison lookup
 # 7. format value
 # 8. Generator kind
@@ -378,7 +389,7 @@ class ConstantEllipsis(DataclassHideDefault):
 
 # The type of block this is, as we can infer from the flags.
 # https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
-# TODO: Rename, overlaps with "blocks"
+# TODO: #84 Rename, overlaps with "blocks"
 BlockType = Union["FunctionBlock", None]
 
 
@@ -536,6 +547,14 @@ _definitions = {
         },
         "description": Jump.__doc__,
     },
+    "NoArg": {
+        "type": "object",
+        "required": [],
+        "properties": {
+            "_arg": {"type": "integer", "default": 0},
+        },
+        "description": NoArg.__doc__,
+    },
     "Name": {
         "type": "object",
         "required": ["name"],
@@ -668,7 +687,7 @@ _definitions = {
     },
     "Instruction": {
         "type": "object",
-        "required": ["name", "arg"],
+        "required": ["name"],
         "properties": {
             "name": {"type": "string"},
             "arg": {
@@ -679,8 +698,10 @@ _definitions = {
                     {"$ref": "#/definitions/Constant"},
                     {"$ref": "#/definitions/Freevar"},
                     {"$ref": "#/definitions/Cellvar"},
+                    {"$ref": "#/definitions/NoArg"},
                     {"type": "integer"},
-                ]
+                ],
+                "default": {"_arg": 0},
             },
             "_n_args_override": {"type": "integer"},
             "line_number": {"type": "integer"},
