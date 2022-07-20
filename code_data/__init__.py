@@ -8,7 +8,10 @@ from dataclasses import dataclass, field
 from inspect import _ParameterKind
 from math import isnan
 from types import CodeType
-from typing import FrozenSet, Iterator, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, FrozenSet, Iterator, Optional, Tuple, Union
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 from .dataclass_hide_default import DataclassHideDefault
 
