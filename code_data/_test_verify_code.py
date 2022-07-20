@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import ctypes
 import dis
-import json
 import sys
 from dis import _get_instructions_bytes  # type: ignore
 from types import CodeType
 from typing import Any, Iterable, Optional, cast
 
 import fastjsonschema
+import orjson
 
 from . import JSON_SCHEMA, CodeData
 from ._blocks import verify_block
@@ -75,7 +75,9 @@ def verify_json(code_data: CodeData) -> None:
     """
     json_data = code_data.to_json_data()
     validate(json_data)
-    resulting_json_data = json.loads(json.dumps(json_data, ensure_ascii=False))
+    resulting_json_data = orjson.loads(
+        orjson.dumps(json_data)
+    )
     assert json_data == resulting_json_data, "JSON value changed after serialization"
     assert (
         CodeData.from_json_data(resulting_json_data) == code_data

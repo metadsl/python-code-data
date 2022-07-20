@@ -45,7 +45,8 @@ test = [
     "pytest>=3.6.0",
     "hypothesmith",
     "fastjsonschema",
-    "pytest-xdist[psutil]"
+    "pytest-xdist[psutil]",
+    "orjson"
 ]
 
 docs = [
