@@ -18,7 +18,6 @@ from . import (
     Arg,
     Args,
     Blocks,
-    TypeOfCode,
     Cellvar,
     Constant,
     ConstantValue,
@@ -28,6 +27,7 @@ from . import (
     Jump,
     Name,
     NoArg,
+    TypeOfCode,
     Varname,
 )
 from ._line_mapping import LineMapping
