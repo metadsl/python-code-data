@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from types import CodeType
-from typing import cast
+from typing import Set, cast
 
 from . import CodeData, FunctionBlock, FunctionType
 from ._args import ArgsInput, args_from_input, args_to_input
@@ -69,7 +69,7 @@ def to_code_data(code: CodeType) -> CodeData:
         docstring = (
             constants[0] if constants and isinstance(constants[0], str) else None
         )
-        fn_tp_flags = cast(set[FunctionType], FN_TYPE_FLAGS & flags_data)
+        fn_tp_flags = cast(Set[FunctionType], FN_TYPE_FLAGS & flags_data)
         assert len(fn_tp_flags) in {0, 1}
         fn_tp = fn_tp_flags.pop() if fn_tp_flags else None
         if fn_tp:
