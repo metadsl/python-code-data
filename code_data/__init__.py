@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from inspect import _ParameterKind
+from math import isnan
 from types import CodeType
 from typing import FrozenSet, Iterator, Literal, Optional, Tuple, Union
 
@@ -316,6 +317,16 @@ class ConstantFloat(DataclassHideDefault):
     # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
     is_neg_zero: bool = field(default=False)
 
+    def __eq__(self, __o: object) -> bool:
+        """
+        Override equality to mark nans as equal
+        """
+        if not isinstance(__o, ConstantFloat):
+            return False
+        if isnan(self.value) and isnan(__o.value):
+            return True
+        return (self.value, self.is_neg_zero) == (__o.value, __o.is_neg_zero)
+
 
 @dataclass(frozen=True)
 class ConstantComplex(DataclassHideDefault):
@@ -550,16 +561,30 @@ _definitions = {
     },
     "ConstantValue": {
         "anyOf": [
-            {"type": "string"},
             {"type": "boolean"},
-            {"type": "number"},
             {"type": "null"},
+            {"$ref": "#/definitions/ConstantString"},
+            {"$ref": "#/definitions/ConstantNumber"},
             {"$ref": "#/definitions/ConstantEllipsis"},
             {"$ref": "#/definitions/ConstantComplex"},
             {"$ref": "#/definitions/ConstantFrozenset"},
             {"$ref": "#/definitions/ConstantTuple"},
             {"$ref": "#/definitions/ConstantBytes"},
             {"$ref": "#/definitions/CodeData"},
+        ]
+    },
+    "ConstantString": {
+        "anyOf": [
+            {"type": "string"},
+            {
+                "type": "object",
+                "required": ["string"],
+                "properties": {"string": {"type": "string"}},
+                "description": (
+                    "A string with surrogat epairs which "
+                    "cannot be encoded to unicode"
+                ),
+            },
         ]
     },
     "ConstantEllipsis": {
@@ -570,12 +595,33 @@ _definitions = {
         },
         "description": "An ellipsis constant",
     },
+    "ConstantNumber": {
+        "anyOf": [
+            {
+                "type": "object",
+                "required": ["float"],
+                "properties": {
+                    "float": {"type": "string", "enum": ["nan", "inf", "-inf"]},
+                },
+                "description": "A special float constant",
+            },
+            {
+                "type": "object",
+                "required": ["int"],
+                "properties": {
+                    "int": {"type": "string"},
+                },
+                "description": "A string encocding of an integer",
+            },
+            {"type": "number"},
+        ]
+    },
     "ConstantComplex": {
         "type": "object",
         "required": ["real", "imag"],
         "properties": {
-            "real": {"type": "number"},
-            "imag": {"type": "number"},
+            "real": {"$ref": "#/definitions/ConstantNumber"},
+            "imag": {"$ref": "#/definitions/ConstantNumber"},
         },
         "description": ConstantComplex.__doc__,
     },

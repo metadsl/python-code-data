@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from ast import literal_eval
 from base64 import b64decode, b64encode
-from copy import deepcopy
 from dataclasses import fields, is_dataclass
+from math import isinf, isnan
+from typing import cast
 
 from . import (
     AdditionalLine,
@@ -40,14 +42,38 @@ def code_data_to_json(code_data: CodeData) -> dict:
     return res
 
 
+# Integers outside of this range are encoded as strings
+# https://datatracker.ietf.org/doc/html/rfc7159
+MIN_INTEGER, MAX_INTEGER = (-(2**53) + 1, (2**53) - 1)
+
+
 def value_to_json(value: object) -> object:
     """
     Like as dict but removes fields which are their defaults
     """
+    if isinstance(value, float):
+        if isinf(value):
+            return {"float": "inf" if value > 0 else "-inf"}
+        if isnan(value):
+            return {"float": "nan"}
+        return value
+    if isinstance(value, int):
+        if value < MIN_INTEGER or value > MAX_INTEGER:
+            return {"int": str(value)}
+        return value
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            return {"string": repr(value)}
+        return value
     if isinstance(value, ConstantEllipsis):
         return {"type": "ellipsis"}
     if isinstance(value, ConstantComplex):
-        return {"real": value.value.real, "imag": value.value.imag}
+        return {
+            "real": value_to_json(value.value.real),
+            "imag": value_to_json(value.value.imag),
+        }
     if isinstance(value, bytes):
         return {"bytes": b64encode(value).decode("ascii")}
     # Unwrap constants
@@ -78,7 +104,7 @@ def value_to_json(value: object) -> object:
         return list(map(value_to_json, value))
     if isinstance(value, frozenset):
         return {"frozenset": list(map(value_to_json, value))}
-    if isinstance(value, (int, float, str, type(None))):
+    if isinstance(value, (str, type(None))):
         return value
     raise NotImplementedError(f"Unsupported value type: {type(value)}")
 
@@ -92,7 +118,6 @@ def code_data_from_json(value: object) -> CodeData:
     """
     Parse a JSON value into a CodeData object.
     """
-    value = deepcopy(value)
     if not isinstance(value, dict):
         raise ValueError(f"Expected dict, got {type(value)}")
     if "blocks" in value:
@@ -166,10 +191,26 @@ def constant_value_from_json(value: object) -> object:
     Parse a JSON value into a Python value for a constant.
     """
     if isinstance(value, dict):
+        if "int" in value:
+            return int(value["int"])
+        if "float" in value:
+            v = value["float"]
+            if v == "inf":
+                return float("inf")
+            if v == "-inf":
+                return float("-inf")
+            if v == "nan":
+                return float("nan")
+            raise NotImplementedError(f"Unsupported float value: {value}")
+        if "string" in value:
+            return literal_eval(value["string"])
         if "type" in value and value["type"] == "ellipsis":
             return ...
         if "real" in value:
-            return complex(value["real"], value["imag"])
+            return complex(
+                cast(float, constant_value_from_json(value["real"])),
+                cast(float, constant_value_from_json(value["imag"])),
+            )
         if "bytes" in value:
             return b64decode(value["bytes"])
         if "frozenset" in value:

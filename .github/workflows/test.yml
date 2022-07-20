@@ -27,7 +27,7 @@ jobs:
       - run: pip install -e . -r requirements.test.txt
       # TODO: Enable dev mode for Python
       # https://docs.python.org/3/library/devmode.html#devmode
-      - run: pytest code_data
+      - run: pytest code_data -x -vv
       - name: Commit and push failing example
         if: failure()
         run: |
@@ -48,7 +48,7 @@ jobs:
       - run: git fetch origin $GITHUB_BASE_REF:base $GITHUB_REF:pr
       - run: pip install asv virtualenv
       - run: asv machine --yes
-      - run: asv continuous base pr --strict -e
+      - run: asv continuous base pr -e
   # Run docs on here as well as RTD in case we max out the RTD builder
   docs:
     name: docs build

@@ -105,7 +105,7 @@ def bytes_to_blocks(
 
         # Pop all additional line offsets for additional args
         for i in range(offset + 2, next_offset, 2):
-            line_mapping.offset_to_line.pop(i)
+            line_mapping.offset_to_line.pop(i, None)
             line_mapping.offset_to_additional_line_offsets.pop(i, None)
 
     # Compute a sorted list of target, to map each one to a bloc offset
