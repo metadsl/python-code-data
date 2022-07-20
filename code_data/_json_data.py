@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ast import literal_eval
 from base64 import b64decode, b64encode
+from copy import copy
 from dataclasses import fields, is_dataclass
 from math import isinf, isnan
 from typing import cast
@@ -120,6 +121,7 @@ def code_data_from_json(value: object) -> CodeData:
     """
     if not isinstance(value, dict):
         raise ValueError(f"Expected dict, got {type(value)}")
+    value = copy(value)
     if "blocks" in value:
         value["blocks"] = tuple(
             tuple(instruction_from_json(i) for i in block) for block in value["blocks"]
@@ -155,6 +157,7 @@ def instruction_from_json(value: object) -> Instruction:
     """
     if not isinstance(value, dict):
         raise ValueError(f"Expected dict, got {type(value)}")
+    value = copy(value)
     value["arg"] = arg_from_json(value["arg"])
     return Instruction(**lists_values_to_tuples(value))
 
@@ -174,6 +177,7 @@ def arg_from_json(value: object) -> Arg:
     if "varname" in value:
         return Varname(**value)
     if "constant" in value:
+        value = copy(value)
         if isinstance(value["constant"], dict) and "filename" in value["constant"]:
             value["constant"] = code_data_from_json(value["constant"])
         else:
