@@ -11,6 +11,8 @@ import sys
 from dataclasses import dataclass, field, replace
 from typing import Generic, Iterable, Optional, Tuple, TypeVar
 
+from opcode import HAVE_ARGUMENT
+
 from . import (
     AdditionalArgs,
     Arg,
@@ -25,6 +27,7 @@ from . import (
     Instruction,
     Jump,
     Name,
+    NoArg,
     Varname,
 )
 from ._line_mapping import LineMapping
@@ -309,6 +312,8 @@ def to_arg(
         return Freevar(freevars[arg - len(found_cellvars)])
     elif opcode in dis.hasconst:
         return Constant(*found_constants.found_index(arg))
+    elif opcode < HAVE_ARGUMENT:
+        return NoArg(arg)
     return arg
 
 
@@ -321,7 +326,8 @@ def from_arg(
     cellvars: FromArgs[str],
     constants: FromArgs[ConstantValue],
 ) -> int:
-
+    if isinstance(arg, NoArg):
+        return arg._arg
     # Use 1 as the arg_value, which will be update later
     if isinstance(arg, Jump):
         return 1
