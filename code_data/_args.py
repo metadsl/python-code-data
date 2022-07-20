@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from inspect import _ParameterKind
 from typing import Tuple
 
-from . import Args, FlagsData
+from . import Args
+from ._flags_data import FlagsData
 
 
-def args_from_input(input: ArgsInput) -> tuple[Args, FlagsData]:
+def args_from_input(input: ArgsInput) -> Args:
     """
     Create args from code input, grabbing names in order from varnames.
     """
@@ -31,7 +32,7 @@ def args_from_input(input: ArgsInput) -> tuple[Args, FlagsData]:
     )
     if "VARARGS" in flags_data:
         var_positional, varnames = varnames[0], varnames[1:]
-        flags_data -= {"VARARGS"}
+        flags_data.remove("VARARGS")
     else:
         var_positional = None
 
@@ -41,19 +42,16 @@ def args_from_input(input: ArgsInput) -> tuple[Args, FlagsData]:
     )
     if "VARKEYWORDS" in flags_data:
         var_keyword, varnames = varnames[0], varnames[1:]
-        flags_data -= {"VARKEYWORDS"}
+        flags_data.remove("VARKEYWORDS")
     else:
         var_keyword = None
 
-    return (
-        Args(
-            positional_only=positional_only,
-            positional_or_keyword=positional_or_keyword,
-            var_positional=var_positional,
-            keyword_only=keyword_only,
-            var_keyword=var_keyword,
-        ),
-        flags_data,
+    return Args(
+        positional_only=positional_only,
+        positional_or_keyword=positional_or_keyword,
+        var_positional=var_positional,
+        keyword_only=keyword_only,
+        var_keyword=var_keyword,
     )
 
 

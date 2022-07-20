@@ -8,7 +8,10 @@ from dataclasses import dataclass, field
 from inspect import _ParameterKind
 from math import isnan
 from types import CodeType
-from typing import FrozenSet, Iterator, Optional, Tuple, Union
+from typing import TYPE_CHECKING, FrozenSet, Iterator, Optional, Tuple, Union
+
+if TYPE_CHECKING:
+    from typing import Literal
 
 from .dataclass_hide_default import DataclassHideDefault
 
@@ -57,9 +60,12 @@ class CodeData(DataclassHideDefault):
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: tuple[str, ...] = field(default=())
 
-    # code flags
-    flags: FlagsData = field(default_factory=frozenset)
+    # Whether the annotations future flag is active
+    future_annotations: bool = field(default=False)
 
+    # Whether the CO_NESTED flag is set. This is not used anymore and has no impact
+    # https://github.com/python/cpython/pull/19660
+    _nested: bool = field(default=False)
     # On Python < 3.10 sometimes there is a line mapping for an additional line
     # for the bytecode after the last one in the code, for an instruction which was
     # compiled away. Include this so we can represent the line mapping faithfully.
@@ -141,9 +147,6 @@ class CodeData(DataclassHideDefault):
         yield self
         for code_data in self:
             yield from code_data.all_code_data()
-
-
-FlagsData = FrozenSet[str]
 
 
 # tuple of blocks, each block is a list of instructions.
@@ -415,6 +418,10 @@ class FunctionBlock(DataclassHideDefault):
 
     args: Args = field(default_factory=Args, metadata={"positional": True})
     docstring: Optional[str] = field(default=None)
+    type: FunctionType = field(default=None)
+
+
+FunctionType = Optional['Literal["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"]']
 
 
 @dataclass(frozen=True)
@@ -444,6 +451,10 @@ _definitions = {
                 },
             },
             "docstring": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": ["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"],
+            },
         },
         "description": FunctionBlock.__doc__,
     },
@@ -499,7 +510,7 @@ _definitions = {
             "stacksize": {"type": "integer"},
             "type": {"$ref": "#/definitions/FunctionBlock"},
             "freevars": {"type": "array", "items": {"type": "string"}, "default": []},
-            "flags": {"type": "array", "items": {"type": "string"}, "default": []},
+            "_nested": {"type": "boolean", "default": False},
             "_additional_line": {"$ref": "#/definitions/AdditionalLine"},
             "_additional_args": {
                 "type": "array",

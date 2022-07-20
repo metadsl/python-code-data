@@ -18,6 +18,7 @@ def normalize(x: T) -> T:
                 blocks=normalize(x.blocks),
                 _additional_args=(),
                 _additional_line=None,
+                _nested=False,
             ),
         )
     if isinstance(x, Instruction):

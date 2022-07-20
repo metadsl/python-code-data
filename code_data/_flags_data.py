@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import dis
 import enum
-
-from . import FlagsData
+from typing import Set
 
 # Import this to access future flags. Skip sorting so it isn't removed
 import __future__  # isort:skip
 
+FlagsData = Set[str]
 
 __all__ = ["to_flags_data", "from_flags_data"]
 
@@ -19,13 +19,13 @@ __all__ = ["to_flags_data", "from_flags_data"]
 def to_flags_data(flags: int) -> FlagsData:
     flags_data: set[str] = set()
     if not flags:
-        return frozenset(flags_data)
+        return flags_data
     # Iterate through all flags, raising an exception if we hit any unknown ones
     for f in enum._decompose(_CodeFlag, flags)[0]:  # type: ignore
         if f not in _CodeFlag:
             raise ValueError(f"Flag {f} is not a known flag")
         flags_data.add(f.name)
-    return frozenset(flags_data)
+    return flags_data
 
 
 def from_flags_data(flags_data: FlagsData) -> int:
