@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ast import literal_eval
 from base64 import b64decode, b64encode
 from dataclasses import fields, is_dataclass
 from math import isinf, isnan
@@ -59,6 +60,12 @@ def value_to_json(value: object) -> object:
     if isinstance(value, int):
         if value < MIN_INTEGER or value > MAX_INTEGER:
             return {"int": str(value)}
+        return value
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            return {"string": repr(value)}
         return value
     if isinstance(value, ConstantEllipsis):
         return {"type": "ellipsis"}
@@ -195,6 +202,8 @@ def constant_value_from_json(value: object) -> object:
             if v == "nan":
                 return float("nan")
             raise NotImplementedError(f"Unsupported float value: {value}")
+        if "string" in value:
+            return literal_eval(value["string"])
         if "type" in value and value["type"] == "ellipsis":
             return ...
         if "real" in value:

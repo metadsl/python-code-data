@@ -553,9 +553,9 @@ _definitions = {
     },
     "ConstantValue": {
         "anyOf": [
-            {"type": "string"},
             {"type": "boolean"},
             {"type": "null"},
+            {"$ref": "#/definitions/ConstantString"},
             {"$ref": "#/definitions/ConstantNumber"},
             {"$ref": "#/definitions/ConstantEllipsis"},
             {"$ref": "#/definitions/ConstantComplex"},
@@ -563,6 +563,20 @@ _definitions = {
             {"$ref": "#/definitions/ConstantTuple"},
             {"$ref": "#/definitions/ConstantBytes"},
             {"$ref": "#/definitions/CodeData"},
+        ]
+    },
+    "ConstantString": {
+        "anyOf": [
+            {"type": "string"},
+            {
+                "type": "object",
+                "required": ["string"],
+                "properties": {"string": {"type": "string"}},
+                "description": (
+                    "A string with surrogat epairs which "
+                    "cannot be encoded to unicode"
+                ),
+            },
         ]
     },
     "ConstantEllipsis": {
