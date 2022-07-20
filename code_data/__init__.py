@@ -1,14 +1,12 @@
 """
 Transform Python code objects into data, and vice versa.
-
-TODO: Move all types here. Move all functions into other files. Make all things methods
-for external usage.
 """
 from __future__ import annotations
 
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from inspect import _ParameterKind
+from math import isnan
 from types import CodeType
 from typing import FrozenSet, Iterator, Optional, Tuple, Union
 
@@ -91,6 +89,27 @@ class CodeData(DataclassHideDefault):
 
         return from_code_data(self)
 
+    @classmethod
+    def from_json_data(cls, json_data: dict) -> CodeData:
+        """
+        Parse a JSON data structure into a CodeData.
+
+        The JSON structure must be of the schema `code_data.JSON_SCHEMA`
+        """
+        from ._json_data import code_data_from_json
+
+        return code_data_from_json(json_data)
+
+    def to_json_data(self) -> dict:
+        """
+        Convert the code data to a JSON data structure.
+
+        The schema of the returned json is available at `code_data.JSON_SCHEMA`
+        """
+        from ._json_data import code_data_to_json
+
+        return code_data_to_json(self)
+
     def normalize(self) -> CodeData:
         """
 
@@ -112,8 +131,8 @@ class CodeData(DataclassHideDefault):
         for block in self.blocks:
             for instruction in block:
                 arg = instruction.arg
-                if isinstance(arg, Constant) and isinstance(arg.value, CodeData):
-                    yield arg.value
+                if isinstance(arg, Constant) and isinstance(arg.constant, CodeData):
+                    yield arg.constant
 
     def all_code_data(self) -> Iterator[CodeData]:
         """
@@ -207,7 +226,7 @@ class Constant(DataclassHideDefault):
     A constant argument.
     """
 
-    value: ConstantValue = field(metadata={"positional": True})
+    constant: ConstantValue = field(metadata={"positional": True})
     # Optional override for the position if it is not ordered by occurance in the code.
     _index_override: Optional[int] = field(default=None)
 
@@ -253,12 +272,12 @@ ConstantValue = Union["InnerConstant", CodeData]
 
 # tuples/sets can only contain these values, not the code type itself.
 InnerConstant = Union[
-    "ConstantInt",
     str,
-    "ConstantFloat",
     None,
-    "ConstantBool",
     bytes,
+    "ConstantBool",
+    "ConstantFloat",
+    "ConstantInt",
     "ConstantEllipsis",
     "ConstantComplex",
     "ConstantSet",
@@ -298,6 +317,16 @@ class ConstantFloat(DataclassHideDefault):
     # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
     is_neg_zero: bool = field(default=False)
 
+    def __eq__(self, __o: object) -> bool:
+        """
+        Override equality to mark nans as equal
+        """
+        if not isinstance(__o, ConstantFloat):
+            return False
+        if isnan(self.value) and isnan(__o.value):
+            return True
+        return (self.value, self.is_neg_zero) == (__o.value, __o.is_neg_zero)
+
 
 @dataclass(frozen=True)
 class ConstantComplex(DataclassHideDefault):
@@ -327,6 +356,7 @@ class ConstantTuple(DataclassHideDefault):
 class ConstantSet(DataclassHideDefault):
     """
     A constant set.
+    # TODO: Rename to frozenset
     """
 
     value: FrozenSet[InnerConstant] = field(metadata={"positional": True})
@@ -395,3 +425,267 @@ class AdditionalLine(DataclassHideDefault):
 
     line: Optional[int]
     additional_offsets: tuple[int, ...] = field(default=tuple())
+
+
+# Initially generate by https://github.com/s-knibbs/dataclasses-jsonschema
+# and then modified to fit our needs.
+_definitions = {
+    "FunctionBlock": {
+        "type": "object",
+        "properties": {
+            "args": {
+                "$ref": "#/definitions/Args",
+                "default": {
+                    "positional_only": [],
+                    "positional_or_keyword": [],
+                    "var_positional": None,
+                    "keyword_only": [],
+                    "var_keyword": None,
+                },
+            },
+            "docstring": {"type": "string"},
+        },
+        "description": FunctionBlock.__doc__,
+    },
+    "Args": {
+        "type": "object",
+        "properties": {
+            "positional_only": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+            },
+            "positional_or_keyword": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+            },
+            "var_positional": {"type": "string"},
+            "keyword_only": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+            },
+            "var_keyword": {"type": "string"},
+        },
+        "description": Args.__doc__,
+    },
+    "AdditionalLine": {
+        "type": "object",
+        "properties": {
+            "line": {"type": "integer"},
+            "additional_offsets": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "default": [],
+            },
+        },
+        "description": AdditionalLine.__doc__,
+    },
+    "CodeData": {
+        "type": "object",
+        "required": ["blocks", "filename", "first_line_number", "name", "stacksize"],
+        "properties": {
+            "blocks": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/Instruction"},
+                },
+            },
+            "filename": {"type": "string"},
+            "first_line_number": {"type": "integer"},
+            "name": {"type": "string"},
+            "stacksize": {"type": "integer"},
+            "type": {"$ref": "#/definitions/FunctionBlock"},
+            "freevars": {"type": "array", "items": {"type": "string"}, "default": []},
+            "flags": {"type": "array", "items": {"type": "string"}, "default": []},
+            "_additional_line": {"$ref": "#/definitions/AdditionalLine"},
+            "_additional_args": {
+                "type": "array",
+                "items": {
+                    "anyOf": [
+                        {"$ref": "#/definitions/Name"},
+                        {"$ref": "#/definitions/Varname"},
+                        {"$ref": "#/definitions/Cellvar"},
+                        {"$ref": "#/definitions/Constant"},
+                    ]
+                },
+                "default": [],
+            },
+        },
+        "description": CodeData.__doc__,
+    },
+    "Jump": {
+        "type": "object",
+        "required": ["target"],
+        "properties": {
+            "target": {"type": "integer"},
+            "relative": {"type": "boolean", "default": False},
+        },
+        "description": Jump.__doc__,
+    },
+    "Name": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+            "name": {"type": "string"},
+            "_index_override": {"type": "integer"},
+        },
+        "description": Name.__doc__,
+    },
+    "Varname": {
+        "type": "object",
+        "required": ["varname"],
+        "properties": {
+            "varname": {"type": "string"},
+            "_index_override": {"type": "integer"},
+        },
+        "description": Varname.__doc__,
+    },
+    "Constant": {
+        "type": "object",
+        "properties": {
+            "constant": {"$ref": "#/definitions/ConstantValue"},
+            "_index_override": {"type": "integer"},
+        },
+        "description": Constant.__doc__,
+    },
+    "ConstantValue": {
+        "anyOf": [
+            {"type": "boolean"},
+            {"type": "null"},
+            {"$ref": "#/definitions/ConstantString"},
+            {"$ref": "#/definitions/ConstantNumber"},
+            {"$ref": "#/definitions/ConstantEllipsis"},
+            {"$ref": "#/definitions/ConstantComplex"},
+            {"$ref": "#/definitions/ConstantFrozenset"},
+            {"$ref": "#/definitions/ConstantTuple"},
+            {"$ref": "#/definitions/ConstantBytes"},
+            {"$ref": "#/definitions/CodeData"},
+        ]
+    },
+    "ConstantString": {
+        "anyOf": [
+            {"type": "string"},
+            {
+                "type": "object",
+                "required": ["string"],
+                "properties": {"string": {"type": "string"}},
+                "description": (
+                    "A string with surrogat epairs which "
+                    "cannot be encoded to unicode"
+                ),
+            },
+        ]
+    },
+    "ConstantEllipsis": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+            "type": {"type": "string", "enum": ["ellipsis"]},
+        },
+        "description": "An ellipsis constant",
+    },
+    "ConstantNumber": {
+        "anyOf": [
+            {
+                "type": "object",
+                "required": ["float"],
+                "properties": {
+                    "float": {"type": "string", "enum": ["nan", "inf", "-inf"]},
+                },
+                "description": "A special float constant",
+            },
+            {
+                "type": "object",
+                "required": ["int"],
+                "properties": {
+                    "int": {"type": "string"},
+                },
+                "description": "A string encocding of an integer",
+            },
+            {"type": "number"},
+        ]
+    },
+    "ConstantComplex": {
+        "type": "object",
+        "required": ["real", "imag"],
+        "properties": {
+            "real": {"$ref": "#/definitions/ConstantNumber"},
+            "imag": {"$ref": "#/definitions/ConstantNumber"},
+        },
+        "description": ConstantComplex.__doc__,
+    },
+    "ConstantBytes": {
+        "type": "object",
+        "required": ["bytes"],
+        "properties": {
+            "bytes": {"type": "string"},
+        },
+        "description": "Base 64 encoded bytes",
+    },
+    "ConstantFrozenset": {
+        "type": "object",
+        "required": ["frozenset"],
+        "properties": {
+            "frozenset": {
+                "type": "array",
+                "items": {"$ref": "#/definitions/ConstantValue"},
+            }
+        },
+        "description": ConstantSet.__doc__,
+    },
+    "ConstantTuple": {
+        "type": "array",
+        "items": {"$ref": "#/definitions/ConstantValue"},
+    },
+    "Freevar": {
+        "type": "object",
+        "required": ["freevar"],
+        "properties": {"freevar": {"type": "string"}},
+        "description": Freevar.__doc__,
+    },
+    "Cellvar": {
+        "type": "object",
+        "required": ["cellvar"],
+        "properties": {
+            "cellvar": {"type": "string"},
+            "_index_override": {"type": "integer"},
+        },
+        "description": Cellvar.__doc__,
+    },
+    "Instruction": {
+        "type": "object",
+        "required": ["name", "arg"],
+        "properties": {
+            "name": {"type": "string"},
+            "arg": {
+                "anyOf": [
+                    {"$ref": "#/definitions/Jump"},
+                    {"$ref": "#/definitions/Name"},
+                    {"$ref": "#/definitions/Varname"},
+                    {"$ref": "#/definitions/Constant"},
+                    {"$ref": "#/definitions/Freevar"},
+                    {"$ref": "#/definitions/Cellvar"},
+                    {"type": "integer"},
+                ]
+            },
+            "_n_args_override": {"type": "integer"},
+            "line_number": {"type": "integer"},
+            "_line_offsets_override": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "default": [],
+            },
+        },
+        "description": Instruction.__doc__,
+    },
+}
+
+# The JSON schema for the Python code object
+JSON_SCHEMA = {
+    "title": "Python Code Object",
+    "definitions": _definitions,
+    "$ref": "#/definitions/CodeData",
+}

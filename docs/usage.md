@@ -17,134 +17,53 @@ kernelspec:
 
 ## Python API
 
-The overall workflow for using the API involves some part of these steps:
+### `from_code`
 
-1. Get your hands on a [Code object](https://docs.python.org/3/reference/datamodel.html#index-55), like by using `compile`
-2. Turn it into data using .
-3. Modify it, traverse it, or use it for downstream analysis.
-4. Turn the [`CodeData`](code_data.CodeData) back into a real Python code object.
-5. Execute the code object, using `exec`.
-
-### Example: Modifying Existing Bytecode
-
-In this example, we will compile some code, modify the bytecode, and then turn it back into Python code to execute.
-
-We can make a code object from a string using `compile`:
+The main entrypoint to our API is the `CodeData` object. You can create it from any Python `CodeType`:
 
 ```{code-cell}
-x = True
-source_code = "print(10 + (100 if x else 10))"
-code = compile(source_code, "", "exec")
-exec(code)
-```
-
-If we look at the code object, we can see that it does have the bytecode, but its represented as byte string, which isn't very helpful:
-
-```{code-cell}
-print(code)
-print(code.co_code)
-```
-
-We could use Python's built in `dis` module to introspect the code object. This is helpful to look at it, but won't let us change it:
-
-```{code-cell}
-import dis
-dis.dis(code)
-```
-
-So instead, lets turn it into ✨data✨:
-
-```{code-cell}
-from code_data import CodeData
-
-code_data = CodeData.from_code(code)
-code_data
-```
-
-This is still a bit hard to see, so let's install Rich's pretty print helper:
-
-```{code-cell}
+# Load rich first for prettier output
 from rich import pretty
 pretty.install()
-code_data
-```
-
-That's better!
-
-We can see now that we have two blocks, each with a list of instructions.
-
-Let's try to change the additions to subtractions!
-
-```{code-cell}
-from dataclasses import replace
-
-new_code_data = replace(
-    code_data,
-    blocks=tuple(tuple(
-        replace(instruction, name="BINARY_SUBTRACT") if instruction.name == "BINARY_ADD" else instruction
-        for instruction in block
-    ) for block in code_data.blocks)
-)
-```
-
-Now we can turn this back into code and exec it!
-
-```{code-cell}
-new_code = new_code_data.to_code()
-exec(new_code)
-```
-
-### Example: Analyzing instruction occurances
-
-For our next example, lets do something a bit more fun. Let's load all installed modules and see what flags are most commonly used!n Let's
-sort the flags by what "level" they were defined at. For example, a module is
-at the top level, a class second level, etc.
-
-First we can load all the code objects for all importable modules, using
-a util written for the tests. In the tests, we use this to verify that
-our code analysis is isomporphic, meaning that when we convert to and from the
-code data, we should get back an equivalent code object.
-
-```{code-cell}
-from code_data.module_codes import modules_codes_cached
-
-names_source_and_codes = modules_codes_cached()
-names_source_and_codes[:3]
-```
-
-Lets turn them all into code data:
-
-```{code-cell}
-all_code_data = [CodeData.from_code(code) for (name, source, code) in names_source_and_codes]
-all_code_data[0].flags
-```
-
-We can see that the flags are a list of strings.
-
-Now let's analyze all of them to see which flags are most popular!
-
-```{code-cell}
-from collections import defaultdict, Counter
 from code_data import CodeData
 
-# Mapping from each level index to a counter of the flags
-flags_per_level = defaultdict(Counter)
-counts_per_level = defaultdict(lambda: 0)
+def fn(a, b):
+    return a + b
 
-def process_code_data(code_data: CodeData, level: int) -> None:
-    flags_per_level[level].update(code_data.flags)
-    counts_per_level[level] += 1
-    for c in code_data:
-        process_code_data(c, level + 1)
-
-for code_data in all_code_data:
-    process_code_data(code_data, 0)
-
-(counts_per_level, flags_per_level)
+cd = CodeData.from_code(fn.__code__)
+cd
 ```
 
-We can see that every top level code object has `NOFREE` set, but that isn't the case
-with some of the nested modules. We can also see one code object is nested six levels!
+Instead of using Python's built in code object, or the `dis` module, it reduces the amoutn of information to only that which is needed to recreate the code object. So all information about how it happens to be stored on disk, the bytecode offsets for example of each instruction, is ommited, making it simpler to use.
+
+### `normalize`
+
+We are also able to "normalize" the code object, removing pieces of it that are unused. For example, if you have dead code, Python will still include the constants
+that are present in it, even though there is no way they can be accessed:
+
+```{code-cell}
+def fn():
+    if False:
+        return 1
+
+cd = CodeData.from_code(fn.__code__)
+cd
+```
+
+```{code-cell}
+cd.normalize()
+```
+
+### JSON Support
+
+Since the code object is now a simple data structure, we can serialize it to and from JSON. This provides a nice option if you want to analyze Python bytecode in a different language or save it on disk:
+
+```{code-cell}
+code_json = cd.to_json_data()
+assert CodeData.from_json_data(code_json) == cd
+
+code_json
+```
 
 ## Command Line
 

@@ -33,7 +33,7 @@ def normalize(x: T) -> T:
     if isinstance(x, Constant):
         return cast(
             T,
-            replace(x, _index_override=None, value=normalize(x.value)),
+            replace(x, _index_override=None, constant=normalize(x.constant)),
         )
     if isinstance(x, (Name, Varname, Cellvar)):
         return cast(T, replace(x, _index_override=None))

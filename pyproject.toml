@@ -43,7 +43,10 @@ dev = [
 
 test = [
     "pytest>=3.6.0",
-    "hypothesmith"
+    "hypothesmith",
+    "fastjsonschema",
+    "pytest-xdist[psutil]",
+    "orjson"
 ]
 
 docs = [
@@ -62,7 +65,7 @@ skip_gitignore = true
 extend_skip_glob = ["*/_test_minimized/*"]
 
 [tool.pytest.ini_options]
-addopts = ["--doctest-modules", "--durations=10"]
+addopts = ["--doctest-modules", "--durations=10", "-n=auto"]
 norecursedirs = "_test_minimized"
 python_files = ["*test*.py"]
 

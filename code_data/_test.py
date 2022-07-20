@@ -13,6 +13,8 @@ NEWLINE = "\n"
 EXAMPLES = [
     param("\n", id="blank"),
     param("a", id="variable"),
+    param("def fn(): pass", id="fn"),
+    param("class A: pass", id="class"),
     param("class A: pass\nclass A: pass\n", id="duplicate class"),
     param(f"x = 1{NEWLINE * 127}\ny=2", id="long line jump"),
     # https://bugs.python.org/msg26661

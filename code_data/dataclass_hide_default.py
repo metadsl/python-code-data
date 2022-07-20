@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import MISSING, fields
+from dataclasses import MISSING, Field, fields
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,17 +22,19 @@ class DataclassHideDefault:
 
     def __rich_repr__(self) -> rich.repr.Result:
         for f in fields(self):
-            if not f.repr:
+            if field_is_default(f, self):
                 continue
-            if f.default_factory != MISSING:  # type: ignore
-                default = f.default_factory()
-            elif f.default != MISSING:
-                default = f.default
-            else:
-                default = object()
             name = f.name
-            value = getattr(self, f.name)
-            if value == default:
-                continue
+            value = getattr(self, name)
             positional = f.metadata.get("positional", False)
             yield None if positional else name, value
+
+
+def field_is_default(f: Field, value: object) -> bool:
+    if f.default_factory != MISSING:  # type: ignore
+        default = f.default_factory()
+    elif f.default != MISSING:
+        default = f.default
+    else:
+        return False
+    return getattr(value, f.name) == default

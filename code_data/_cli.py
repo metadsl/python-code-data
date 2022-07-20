@@ -2,12 +2,14 @@ import argparse
 import dis
 import importlib.util
 import pathlib
+from json import dumps
 from os import linesep
 from types import CodeType
 from typing import Optional, cast
 
 try:
     from rich.console import Console
+    from rich.json import JSON
     from rich.syntax import Syntax
 except ImportError:
     # If we can't import rich, just create dummy classes which use the basic printing
@@ -17,6 +19,11 @@ except ImportError:
 
     def Syntax(source, language, line_numbers=False):  # type: ignore
         return source
+
+    class JSON:  # type: ignore
+        @classmethod
+        def from_data(cls, data, **kwargs):
+            return dumps(data, indent=2, **kwargs)
 
 
 from code_data._normalize import normalize
@@ -44,6 +51,11 @@ parser.add_argument(
     action="store_true",
     help="don't normalize code data before printing",
 )
+parser.add_argument(
+    "--json",
+    action="store_true",
+    help="Print the JSON represenation of the code data as well",
+)
 
 
 # TODO: #51 Add tests for CLI
@@ -52,7 +64,7 @@ def main():
     Parse the CLI commands and print the code data.
     """
     args = parser.parse_args()
-    file, cmd, mod, eval_, show_dis, show_source, show_dis_after, no_normalize = (
+    file, cmd, mod, eval_, show_dis, show_source, show_dis_after, no_normalize, json = (
         args.file,
         args.c,
         args.m,
@@ -61,6 +73,7 @@ def main():
         args.source,
         args.dis_after,
         args.no_normalize,
+        args.json,
     )
 
     if len(list(filter(None, [file, cmd, mod, eval_]))) != 1:
@@ -96,6 +109,9 @@ def main():
     if not no_normalize:
         code_data = normalize(code_data)
     console.print(code_data)
+    if json:
+        json_data = code_data.to_json_data()
+        console.print(JSON.from_data(json_data, ensure_ascii=False))
     if show_dis_after:
         res = code_data.to_code()
         show_code_recursive(res)

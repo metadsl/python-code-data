@@ -3,6 +3,8 @@ root: intro
 chapters:
   - file: usage
     sections:
+      - file: example_modify
+      - file: example_analyze
       - file: example_function_types
   - file: background
   - file: faq
