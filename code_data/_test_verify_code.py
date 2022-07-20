@@ -75,9 +75,7 @@ def verify_json(code_data: CodeData) -> None:
     """
     json_data = code_data.to_json_data()
     validate(json_data)
-    resulting_json_data = orjson.loads(
-        orjson.dumps(json_data)
-    )
+    resulting_json_data = orjson.loads(orjson.dumps(json_data))
     assert json_data == resulting_json_data, "JSON value changed after serialization"
     assert (
         CodeData.from_json_data(resulting_json_data) == code_data
