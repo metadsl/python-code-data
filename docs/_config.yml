@@ -58,4 +58,4 @@ sphinx:
       python:
         - https://docs.python.org/3
         -
-    nb_execution_show_tb: true
+    execution_show_tb: true
