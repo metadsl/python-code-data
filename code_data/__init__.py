@@ -6,9 +6,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from inspect import _ParameterKind
-from math import isnan
 from types import CodeType
-from typing import TYPE_CHECKING, FrozenSet, Iterator, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterator, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -229,9 +228,18 @@ class Constant(DataclassHideDefault):
     A constant argument.
     """
 
-    constant: ConstantValue = field(metadata={"positional": True})
+    constant: ConstantValue = field(metadata={"positional": True})  # type: ignore
     # Optional override for the position if it is not ordered by occurance in the code.
     _index_override: Optional[int] = field(default=None)
+
+    def __eq__(self, __o: object) -> bool:
+        from ._constants import constant_key
+
+        if not isinstance(__o, Constant):
+            return False
+        if self._index_override != __o._index_override:
+            return False
+        return constant_key(self.constant) == constant_key(__o.constant)
 
 
 @dataclass(frozen=True)
@@ -275,116 +283,24 @@ AdditionalArg = Union[Name, Varname, Cellvar, Constant]
 AdditionalArgs = Tuple[AdditionalArg, ...]
 
 
-# We process each constant into a `ConstantValue`, so that we can represent
-# the recursive typing of the constants in a way MyPy can handle as well preserving
-# the hash and equality of constants, to the standard that the code object uses. A
-# code object containing a constant of `0` should not be equal to the same code object
-# with a constant of `False`, even though in Python `0 == False`. So by wrapping
-# the different constant types in containers with the type, this makes sure these
-# are not equal:
-ConstantValue = Union["InnerConstant", CodeData]
+# The CodeData can only be a top level constant, not nested in any data structures
+ConstantValue = Union["InnerConstant", CodeData]  # type: ignore
 
-# tuples/sets can only contain these values, not the code type itself.
-InnerConstant = Union[
+# Ignore since MyPy doesn't support recursive types
+# https://github.com/python/mypy/issues/731
+InnerConstant = Union[  # type: ignore
+    frozenset["InnerConstant"],  # type: ignore
+    tuple["InnerConstant", ...],  # type: ignore
     str,
     None,
     bytes,
-    "ConstantBool",
-    "ConstantFloat",
-    "ConstantInt",
-    "ConstantEllipsis",
-    "ConstantComplex",
-    "ConstantSet",
-    "ConstantTuple",
+    bool,
+    float,
+    int,
+    # Exclude ellipsis type because it breaks sphinx
+    # EllipsisType,
+    complex,
 ]
-
-
-# Wrap these in types, so that, say, bytecode with constants of 1
-# are not equal to bytecodes of constants of True.
-
-
-@dataclass(frozen=True)
-class ConstantBool(DataclassHideDefault):
-    """
-    A constant bool.
-    """
-
-    value: bool = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantInt(DataclassHideDefault):
-    """
-    A constant int.
-    """
-
-    value: int = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantFloat(DataclassHideDefault):
-    """
-    A constant float.
-    """
-
-    value: float = field(metadata={"positional": True})
-    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
-    is_neg_zero: bool = field(default=False)
-
-    def __eq__(self, __o: object) -> bool:
-        """
-        Override equality to mark nans as equal
-        """
-        if not isinstance(__o, ConstantFloat):
-            return False
-        if isnan(self.value) and isnan(__o.value):
-            return True
-        return (self.value, self.is_neg_zero) == (__o.value, __o.is_neg_zero)
-
-
-@dataclass(frozen=True)
-class ConstantComplex(DataclassHideDefault):
-    """
-    A constant complex.
-    """
-
-    value: complex = field(metadata={"positional": True})
-    # Store if the value is negative 0, so that == distinguishes between 0.0 and -0.0
-    real_is_neg_zero: bool = field(default=False)
-    imag_is_neg_zero: bool = field(default=False)
-
-
-# We need to wrap the data structures in dataclasses to be able to represent
-# them with MyPy, since it doesn't support recursive types
-# https://github.com/python/mypy/issues/731
-@dataclass(frozen=True)
-class ConstantTuple(DataclassHideDefault):
-    """
-    A constant tuple.
-    """
-
-    value: tuple[InnerConstant, ...] = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantSet(DataclassHideDefault):
-    """
-    A constant set.
-    # TODO: Rename to frozenset
-    """
-
-    value: FrozenSet[InnerConstant] = field(metadata={"positional": True})
-
-
-@dataclass(frozen=True)
-class ConstantEllipsis(DataclassHideDefault):
-    """
-    Use this instead of EllipsisType, because EllipsisType is not supported
-    in Sphinx autodc.
-    """
-
-    def __str__(self):
-        return "..."
 
 
 # The type of block this is, as we can infer from the flags.
@@ -645,7 +561,7 @@ _definitions = {
             "real": {"$ref": "#/definitions/ConstantNumber"},
             "imag": {"$ref": "#/definitions/ConstantNumber"},
         },
-        "description": ConstantComplex.__doc__,
+        "description": "a complex number",
     },
     "ConstantBytes": {
         "type": "object",
@@ -664,7 +580,7 @@ _definitions = {
                 "items": {"$ref": "#/definitions/ConstantValue"},
             }
         },
-        "description": ConstantSet.__doc__,
+        "description": "a frozen set",
     },
     "ConstantTuple": {
         "type": "array",
