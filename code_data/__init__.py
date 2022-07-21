@@ -289,8 +289,8 @@ ConstantValue = Union["InnerConstant", CodeData]  # type: ignore
 # Ignore since MyPy doesn't support recursive types
 # https://github.com/python/mypy/issues/731
 InnerConstant = Union[  # type: ignore
-    frozenset["InnerConstant"],  # type: ignore
-    tuple["InnerConstant", ...],  # type: ignore
+    "frozenset[InnerConstant]",  # type: ignore
+    "tuple[InnerConstant, ...]",  # type: ignore
     str,
     None,
     bytes,
