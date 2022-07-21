@@ -9,7 +9,7 @@ import ctypes
 import dis
 import sys
 from dataclasses import dataclass, field, replace
-from typing import Generic, Iterable, Optional, Tuple, TypeVar
+from typing import Callable, Generic, Hashable, Iterable, Optional, Tuple, TypeVar
 
 from opcode import HAVE_ARGUMENT
 
@@ -30,6 +30,7 @@ from . import (
     TypeOfCode,
     Varname,
 )
+from ._constants import constant_key
 from ._line_mapping import LineMapping
 
 
@@ -173,7 +174,7 @@ def blocks_to_bytes(
     names = FromArgs[str]()
     varnames = FromArgs[str]()
     cellvars = FromArgs[str]()
-    constants = FromArgs[ConstantValue]()
+    constants = FromArgs[ConstantValue](_hash_fn=constant_key)
 
     # If we have a function, set the initial varnames to be the args
     if isinstance(block_type, Function):
@@ -389,13 +390,15 @@ class ToArgs(Generic[T]):
 @dataclass
 class FromArgs(Generic[T]):
     _i_to_arg: dict[int, T] = field(default_factory=dict)
-    _arg_to_i: dict[T, int] = field(default_factory=dict)
+    # Mapping from hash of argument to the actual index
+    _arg_to_i: dict[Hashable, int] = field(default_factory=dict)
+    _hash_fn: Callable[[T], Hashable] = field(default=hash)
 
     def __setitem__(self, i: int, arg: T) -> None:
         if i in self._i_to_arg:
             assert self._i_to_arg[i] == arg
         self._i_to_arg[i] = arg
-        self._arg_to_i[arg] = i
+        self._arg_to_i[self._hash_fn(arg)] = i
 
     def __len__(self) -> int:
         return len(self._i_to_arg)
@@ -413,8 +416,9 @@ class FromArgs(Generic[T]):
         if index_override is not None:
             self[index_override] = arg
             return index_override
-        if arg in self._arg_to_i:
-            return self._arg_to_i[arg]
+        hash_ = self._hash_fn(arg)
+        if hash_ in self._arg_to_i:
+            return self._arg_to_i[hash_]
         index = len(self)
         self[index] = arg
         return index

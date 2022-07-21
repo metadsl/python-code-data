@@ -14,13 +14,6 @@ from . import (
     Cellvar,
     CodeData,
     Constant,
-    ConstantBool,
-    ConstantComplex,
-    ConstantEllipsis,
-    ConstantFloat,
-    ConstantInt,
-    ConstantSet,
-    ConstantTuple,
     Freevar,
     Function,
     Instruction,
@@ -29,7 +22,6 @@ from . import (
     NoArg,
     Varname,
 )
-from ._constants import to_constant
 from .dataclass_hide_default import field_is_default
 
 ##
@@ -69,27 +61,15 @@ def value_to_json(value: object) -> object:
         except UnicodeEncodeError:
             return {"string": repr(value)}
         return value
-    if isinstance(value, ConstantEllipsis):
+    if value == ...:
         return {"type": "ellipsis"}
-    if isinstance(value, ConstantComplex):
+    if isinstance(value, complex):
         return {
-            "real": value_to_json(value.value.real),
-            "imag": value_to_json(value.value.imag),
+            "real": value_to_json(value.real),
+            "imag": value_to_json(value.imag),
         }
     if isinstance(value, bytes):
         return {"bytes": b64encode(value).decode("ascii")}
-    # Unwrap constants
-    if isinstance(
-        value,
-        (
-            ConstantBool,
-            ConstantFloat,
-            ConstantInt,
-            ConstantSet,
-            ConstantTuple,
-        ),
-    ):
-        return value_to_json(value.value)
     if is_dataclass(value):
         return {
             f.name: (
@@ -183,7 +163,7 @@ def arg_from_json(value: object) -> Arg:
         if isinstance(value["constant"], dict) and "filename" in value["constant"]:
             value["constant"] = code_data_from_json(value["constant"])
         else:
-            value["constant"] = to_constant(constant_value_from_json(value["constant"]))
+            value["constant"] = constant_value_from_json(value["constant"])
         return Constant(**value)
     if "freevar" in value:
         return Freevar(**value)
