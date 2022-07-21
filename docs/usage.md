@@ -44,7 +44,9 @@ that are present in it, even though there is no way they can be accessed:
 ```{code-cell}
 def fn():
     if False:
-        return 1
+        x = 20
+    x = 1
+
 
 cd = CodeData.from_code(fn.__code__)
 cd
