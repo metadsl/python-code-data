@@ -40,9 +40,9 @@ print(f"We have loaded {len(all_code_data)} code data objects")
 Let's filter for functions:
 
 ```{code-cell}
-from code_data import FunctionBlock
+from code_data import Function
 
-fns = {c for c in all_code_data if isinstance(c.type, FunctionBlock)}
+fns = {c for c in all_code_data if isinstance(c.type, Function)}
 print(f"{len(fns)} of them are functions")
 ```
 

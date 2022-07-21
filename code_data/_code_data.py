@@ -4,7 +4,7 @@ import sys
 from types import CodeType
 from typing import Set, cast
 
-from . import CodeData, FunctionBlock, FunctionType
+from . import CodeData, Function, FunctionType
 from ._args import ArgsInput, args_from_input, args_to_input
 from ._blocks import blocks_to_bytes, bytes_to_blocks
 from ._constants import from_constant, to_constant
@@ -74,7 +74,7 @@ def to_code_data(code: CodeType) -> CodeData:
         fn_tp = fn_tp_flags.pop() if fn_tp_flags else None
         if fn_tp:
             flags_data.remove(fn_tp)
-        block_type = FunctionBlock(args, docstring, fn_tp)
+        block_type = Function(args, docstring, fn_tp)
         flags_data -= FN_FLAGS
     else:
         raise ValueError(f"Expected both flags to represent function: {fn_flags}")
@@ -111,7 +111,7 @@ def to_code_data(code: CodeType) -> CodeData:
 
 def from_code_data(code_data: CodeData) -> CodeType:
     flags_data: FlagsData = set()
-    if isinstance(code_data.type, FunctionBlock):
+    if isinstance(code_data.type, Function):
         flags_data |= FN_FLAGS
         if code_data.type.type is not None:
             flags_data |= {code_data.type.type}
@@ -127,7 +127,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
     if code_data._additional_line:
         line_mapping.add_additional_line(code_data._additional_line, len(code))
 
-    if isinstance(code_data.type, FunctionBlock):
+    if isinstance(code_data.type, Function):
         args_input = args_to_input(code_data.type.args, flags_data)
         argcount = args_input.argcount
         posonlyargcount = args_input.posonlyargcount

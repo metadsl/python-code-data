@@ -22,7 +22,7 @@ from . import (
     ConstantSet,
     ConstantTuple,
     Freevar,
-    FunctionBlock,
+    Function,
     Instruction,
     Jump,
     Name,
@@ -131,7 +131,7 @@ def code_data_from_json(value: object) -> CodeData:
         tp = value["type"]
         if "args" in tp:
             tp["args"] = Args(**lists_values_to_tuples(tp["args"]))
-        value["type"] = FunctionBlock(**tp)
+        value["type"] = Function(**tp)
     if "flags" in value:
         value["flags"] = frozenset(value["flags"])
     if "_additional_args" in value:

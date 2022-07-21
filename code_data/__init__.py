@@ -55,7 +55,7 @@ class CodeData(DataclassHideDefault):
     stacksize: int
 
     # The type of block this is
-    type: BlockType = field(default=None)
+    type: TypeOfCode = field(default=None)
 
     # tuple of names of free variables (referenced via a function’s closure)
     freevars: tuple[str, ...] = field(default=())
@@ -390,7 +390,7 @@ class ConstantEllipsis(DataclassHideDefault):
 # The type of block this is, as we can infer from the flags.
 # https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
 # TODO: #84 Rename, overlaps with "blocks"
-BlockType = Union["FunctionBlock", None]
+TypeOfCode = Union["Function", None]
 
 
 @dataclass(frozen=True)
@@ -422,7 +422,7 @@ class Args(DataclassHideDefault):
 
 
 @dataclass(frozen=True)
-class FunctionBlock(DataclassHideDefault):
+class Function(DataclassHideDefault):
     """
     A block of code in a function.
     """
@@ -448,7 +448,7 @@ class AdditionalLine(DataclassHideDefault):
 # Initially generate by https://github.com/s-knibbs/dataclasses-jsonschema
 # and then modified to fit our needs.
 _definitions = {
-    "FunctionBlock": {
+    "Function": {
         "type": "object",
         "properties": {
             "args": {
@@ -467,7 +467,7 @@ _definitions = {
                 "enum": ["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"],
             },
         },
-        "description": FunctionBlock.__doc__,
+        "description": Function.__doc__,
     },
     "Args": {
         "type": "object",
@@ -519,7 +519,7 @@ _definitions = {
             "first_line_number": {"type": "integer"},
             "name": {"type": "string"},
             "stacksize": {"type": "integer"},
-            "type": {"$ref": "#/definitions/FunctionBlock"},
+            "type": {"$ref": "#/definitions/Function"},
             "freevars": {"type": "array", "items": {"type": "string"}, "default": []},
             "_nested": {"type": "boolean", "default": False},
             "_additional_line": {"$ref": "#/definitions/AdditionalLine"},
