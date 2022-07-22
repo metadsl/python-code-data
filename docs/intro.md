@@ -26,6 +26,7 @@ maintains the full semantics of the code object for Python 3.7-3.10.
 - Hashable, just like the original code object.
 - Provides a CLI to introspect Python objects from the command line, with
   colored pretty printing courtesy of Rich.
+- Able to encode to/from JSON faithfully
 
 It is meant to be used by anyone trying to understand Python code to build some sort of compiler, for tools like Numba.
 
