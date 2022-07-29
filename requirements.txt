@@ -68,7 +68,7 @@ markupsafe==2.1.1         # via jinja2, nbconvert
 matplotlib-inline==0.1.3  # via ipykernel, ipython
 mccabe==0.6.1             # via flake8
 mdit-py-plugins==0.2.8    # via myst-parser
-mistune==0.8.4            # via nbconvert
+mistune==2.0.3            # via nbconvert
 mypy==0.961               # via code_data (pyproject.toml)
 mypy-extensions==0.4.3    # via black, mypy, typing-inspect
 myst-nb==0.13.2           # via jupyter-book

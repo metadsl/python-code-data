@@ -55,7 +55,7 @@ markdown-it-py==1.1.0     # via mdit-py-plugins, myst-parser
 markupsafe==2.1.1         # via jinja2, nbconvert
 matplotlib-inline==0.1.3  # via ipykernel, ipython
 mdit-py-plugins==0.2.8    # via myst-parser
-mistune==0.8.4            # via nbconvert
+mistune==2.0.3            # via nbconvert
 myst-nb==0.13.2           # via jupyter-book
 myst-parser==0.15.2       # via myst-nb
 nbclient==0.5.13          # via jupyter-cache, nbconvert
