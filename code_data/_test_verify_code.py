@@ -190,7 +190,7 @@ def get_code_line_bytes(code: CodeType) -> bytes:
     Get the bytes for a line of code.
     """
     if USE_LINETABLE:
-        return cast(bytes, code.co_linetable)
+        return code.co_linetable
     return code.co_lnotab
 
 
