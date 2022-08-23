@@ -59,7 +59,7 @@ mistune==0.8.4            # via nbconvert
 myst-nb==0.13.2           # via jupyter-book
 myst-parser==0.15.2       # via myst-nb
 nbclient==0.5.13          # via jupyter-cache, nbconvert
-nbconvert==6.5.0          # via jupyter-server, jupyter-sphinx, myst-nb, notebook
+nbconvert==6.5.1          # via jupyter-server, jupyter-sphinx, myst-nb, notebook
 nbdime==3.1.1             # via jupyter-cache
 nbformat==5.4.0           # via jupyter-cache, jupyter-server, jupyter-sphinx, myst-nb, nbclient, nbconvert, nbdime, notebook
 nest-asyncio==1.5.5       # via ipykernel, jupyter-client, nbclient, notebook
