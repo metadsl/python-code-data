@@ -80,6 +80,7 @@ exclude = [
   '^docs/conf\.py$',
   '^scripts/.*'
 ]
+enable_recursive_aliases = true
 
 
 [tool.conda-lock]

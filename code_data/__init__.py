@@ -7,10 +7,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from inspect import _ParameterKind
 from types import CodeType
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple, Union
-
-if TYPE_CHECKING:
-    from typing import Literal
+from typing import Iterator, Literal, Optional, Tuple, Union
 
 from .dataclass_hide_default import DataclassHideDefault
 
@@ -283,14 +280,9 @@ AdditionalArg = Union[Name, Varname, Cellvar, Constant]
 AdditionalArgs = Tuple[AdditionalArg, ...]
 
 
-# The CodeData can only be a top level constant, not nested in any data structures
-ConstantValue = Union["InnerConstant", CodeData]  # type: ignore
-
-# Ignore since MyPy doesn't support recursive types
-# https://github.com/python/mypy/issues/731
-InnerConstant = Union[  # type: ignore
-    "frozenset[InnerConstant]",  # type: ignore
-    "tuple[InnerConstant, ...]",  # type: ignore
+InnerConstant = Union[
+    frozenset["InnerConstant"],
+    tuple["InnerConstant", ...],
     str,
     None,
     bytes,
@@ -302,11 +294,8 @@ InnerConstant = Union[  # type: ignore
     complex,
 ]
 
-
-# The type of block this is, as we can infer from the flags.
-# https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
-# TODO: #84 Rename, overlaps with "blocks"
-TypeOfCode = Union["Function", None]
+# The CodeData can only be a top level constant, not nested in any data structures
+ConstantValue = Union[InnerConstant, CodeData]
 
 
 @dataclass(frozen=True)
@@ -348,7 +337,12 @@ class Function(DataclassHideDefault):
     type: FunctionType = field(default=None)
 
 
-FunctionType = Optional['Literal["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"]']
+# The type of code this is, as we can infer from the flags.
+# https://github.com/python/cpython/blob/5506d603021518eaaa89e7037905f7a698c5e95c/Include/symtable.h#L13
+TypeOfCode = Union[Function, None]
+
+
+FunctionType = Optional[Literal["GENERATOR", "COROUTINE", "ASYNC_GENERATOR"]]
 
 
 @dataclass(frozen=True)
