@@ -9,7 +9,7 @@ from . import CodeData, ConstantValue, InnerConstant
 __all__ = ["to_constant", "from_constant", "InnerConstant"]
 
 
-def to_constant(value: object) -> ConstantValue:
+def to_constant(value: Union[InnerConstant, CodeType]) -> ConstantValue:
     if isinstance(value, CodeType):
         return CodeData.from_code(value)
     return value

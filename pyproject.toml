@@ -8,7 +8,7 @@ authors = [
     {name = "Saul Shanabrook", email = "s.shanabrook@gmail.com"}
 ]
 readme = "README.md"
-dependencies = []
+dependencies = ["typing-extensions"]
 dynamic = ["version", "description"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -80,6 +80,7 @@ exclude = [
   '^docs/conf\.py$',
   '^scripts/.*'
 ]
+enable_recursive_aliases = true
 
 
 [tool.conda-lock]
