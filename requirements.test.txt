@@ -26,5 +26,5 @@ pytest-xdist[psutil]==2.5.0  # via code_data (pyproject.toml)
 pyyaml==6.0               # via libcst
 sortedcontainers==2.4.0   # via hypothesis
 tomli==2.0.1              # via pytest
-typing-extensions==4.3.0  # via libcst, typing-inspect
+typing-extensions==4.3.0  # via code_data (pyproject.toml), libcst, typing-inspect
 typing-inspect==0.7.1     # via libcst

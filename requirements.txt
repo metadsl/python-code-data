@@ -144,7 +144,7 @@ toml==0.10.2              # via pre-commit
 tomli==2.0.1              # via black, mypy, pytest
 tornado==6.1              # via ipykernel, jupyter-client, jupyter-server, nbdime, notebook, terminado
 traitlets==5.3.0          # via ipykernel, ipython, ipywidgets, jupyter-client, jupyter-core, jupyter-server, matplotlib-inline, nbclient, nbconvert, nbformat, notebook
-typing-extensions==4.3.0  # via libcst, mypy, typing-inspect
+typing-extensions==4.3.0  # via code_data (pyproject.toml), libcst, mypy, typing-inspect
 typing-inspect==0.7.1     # via libcst
 uc-micro-py==1.0.1        # via linkify-it-py
 urllib3==1.26.9           # via requests

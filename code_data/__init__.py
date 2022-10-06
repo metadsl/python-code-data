@@ -7,7 +7,9 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from inspect import _ParameterKind
 from types import CodeType
-from typing import Iterator, Literal, Optional, Tuple, Union
+from typing import FrozenSet, Iterator, Optional, Tuple, Union
+
+from typing_extensions import Literal
 
 from .dataclass_hide_default import DataclassHideDefault
 
@@ -281,8 +283,8 @@ AdditionalArgs = Tuple[AdditionalArg, ...]
 
 
 InnerConstant = Union[
-    frozenset["InnerConstant"],
-    tuple["InnerConstant", ...],
+    FrozenSet["InnerConstant"],
+    Tuple["InnerConstant", ...],
     str,
     None,
     bytes,

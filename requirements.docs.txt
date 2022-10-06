@@ -116,6 +116,7 @@ terminado==0.15.0         # via jupyter-server, notebook
 tinycss2==1.1.1           # via nbconvert
 tornado==6.1              # via ipykernel, jupyter-client, jupyter-server, nbdime, notebook, terminado
 traitlets==5.3.0          # via ipykernel, ipython, ipywidgets, jupyter-client, jupyter-core, jupyter-server, matplotlib-inline, nbclient, nbconvert, nbformat, notebook
+typing-extensions==4.3.0  # via code_data (pyproject.toml)
 uc-micro-py==1.0.1        # via linkify-it-py
 urllib3==1.26.9           # via requests
 wcwidth==0.2.5            # via prompt-toolkit
