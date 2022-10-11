@@ -13,7 +13,7 @@ from typing_extensions import Literal
 
 from .dataclass_hide_default import DataclassHideDefault
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 1.0.0 - 2022-10-11
 - Change static typing to properly reprsent recursive types now that MyPy supports it ([#96](https://github.com/metadsl/python-code-data/pull/96))
 - Update development dependencies
 
