@@ -78,3 +78,17 @@ If you are working on a branch and want to compare performance against main, you
 $ pip install asv
 $ asv continuous origin/main HEAD
 ```
+
+Also, we can run the benchmarks in CI to compare a pull request against the main branch.
+To do so, add a commit with `!benchmark` in the commit message. This will trigger a
+workflow that will run the benchmarks and you can inspect the results of the workflow
+run to see the benchmark results.
+
+
+## Releasing
+
+We use a Github Action, which can be manually triggerd, along with [`bump2version`](https://github.com/c4urself/bump2version)
+to release new versions of the package.
+
+To trigger a release click the trigger release from the Github repo and specify
+if you want it to be a major, minor, or patch, based on [semver](https://semver.org/) of the unreleased changes in the [changelog](./CHANGELOG.md).

@@ -11,3 +11,4 @@ chapters:
   - file: api
   - file: development
   - file: learnings
+  - file: CHANGELOG

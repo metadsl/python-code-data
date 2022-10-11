@@ -39,6 +39,7 @@ jobs:
   benchmark:
     name: benchmark 3.10
     runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.message, '!benchmark')"
     steps:
       - name: Setup python 3.10
         uses: actions/setup-python@v2
