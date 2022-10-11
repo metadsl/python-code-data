@@ -1,0 +1,34 @@
+on:
+  workflow_dispatch:
+    inputs:
+      part:
+        description: 'Version part to increment'
+        required: true
+        default: 'minor' 
+        type: choice
+        options:
+        - major
+        - minor
+        - patch 
+
+jobs:
+  # 1. Run bumpversion (commits and tags)
+  # 2. Build and publish with flit
+  # 3. Push commits and tags
+  print-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - run: pip install bump2version flit
+      - run: bump2version ${{ github.event.inputs.part }}
+      - run: flit publish
+        env:
+          FLIT_USERNAME: __token__
+          FLIT_PASSWORD: ${{ secrets.PYPI_KEY }}
+      # Bot address: https://github.com/orgs/community/discussions/26560
+      - run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push
+          git push --tags
