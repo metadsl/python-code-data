@@ -90,5 +90,6 @@ run to see the benchmark results.
 We use a Github Action, which can be manually triggerd, along with [`bump2version`](https://github.com/c4urself/bump2version)
 to release new versions of the package.
 
-To trigger a release click the trigger release from the Github repo and specify
-if you want it to be a major, minor, or patch, based on [semver](https://semver.org/) of the unreleased changes in the [changelog](./CHANGELOG.md).
+To trigger run the [release workflow](https://github.com/metadsl/python-code-data/actions/workflows/release.yml) which will prompt you to choose a level to bump based on the [semver](https://semver.org/) of the unreleased changes in the [changelog](./CHANGELOG.md):
+
+![Screen Shot 2022-10-11 at 10 57 21 AM](https://user-images.githubusercontent.com/1186124/195127045-de23dadb-b445-49e1-8f14-d5db41d18b84.png)
