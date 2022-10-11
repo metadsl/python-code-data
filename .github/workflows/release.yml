@@ -16,7 +16,7 @@ jobs:
   # 1. Run bumpversion (commits and tags)
   # 2. Build and publish with flit
   # 3. Push commits and tags
-  print-tag:
+  release:
     runs-on: ubuntu-latest
     steps:
       - run: git config --global user.name "github-actions[bot]"
@@ -26,9 +26,9 @@ jobs:
       - uses: actions/setup-python@v2
       - run: pip install bump2version flit         
       - run: bump2version ${{ github.event.inputs.part }}
+      - run: git push
+      - run: git push --tags
       - run: flit publish
         env:
           FLIT_USERNAME: __token__
           FLIT_PASSWORD: ${{ secrets.PYPI_KEY }}
-      - run: git push
-      - run: git push --tags
