@@ -180,9 +180,6 @@ class Instruction(DataclassHideDefault):
     _line_offsets_override: tuple[int, ...] = field(default=tuple())
 
 
-Arg = Union[int, "Jump", "Name", "Varname", "Constant", "Freevar", "Cellvar", "NoArg"]
-
-
 @dataclass(frozen=True)
 class Jump(DataclassHideDefault):
     """
@@ -270,6 +267,9 @@ class NoArg(DataclassHideDefault):
     """
 
     _arg: int = field(default=0)
+
+
+Arg = Union[int, Jump, Name, Varname, Constant, Freevar, Cellvar, NoArg]
 
 
 # TODO: Add:
