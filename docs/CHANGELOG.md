@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 1.0.1 - 2022-10-19
 - Remove forward refs to support resolving type references in Python 3.8 ([#101](https://github.com/metadsl/python-code-data/pull/101))
 
 ## 1.0.0 - 2022-10-11
