@@ -43,7 +43,7 @@ imagesize==1.4.1          # via sphinx
 importlib-metadata==4.2.0  # via myst-nb
 iniconfig==1.1.1          # via pytest
 ipykernel==6.15.0         # via ipywidgets, notebook
-ipython==7.34.0           # via ipykernel, ipywidgets, jupyter-sphinx, myst-nb
+ipython==8.10.0           # via ipykernel, ipywidgets, jupyter-sphinx, myst-nb
 ipython-genutils==0.2.0   # via ipywidgets, notebook
 ipywidgets==7.7.1         # via jupyter-sphinx, myst-nb
 isort==5.10.1             # via code_data (pyproject.toml)

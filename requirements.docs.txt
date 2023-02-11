@@ -34,7 +34,7 @@ idna==3.3                 # via anyio, requests
 imagesize==1.4.1          # via sphinx
 importlib-metadata==4.12.0  # via myst-nb
 ipykernel==6.15.0         # via ipywidgets, notebook
-ipython==8.4.0            # via ipykernel, ipywidgets, jupyter-sphinx, myst-nb
+ipython==8.10.0            # via ipykernel, ipywidgets, jupyter-sphinx, myst-nb
 ipython-genutils==0.2.0   # via ipywidgets, notebook
 ipywidgets==7.7.1         # via jupyter-sphinx, myst-nb
 jedi==0.18.1              # via ipython
