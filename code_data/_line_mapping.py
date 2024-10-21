@@ -184,9 +184,9 @@ def collapse_items(items: ExpandedItems, is_linetable: bool) -> CollapsedItems:
     """
     collapsed_items = [
         CollapsedLineTableItem(
-            line_offset=None
-            if is_linetable and i.line_offset == -128
-            else i.line_offset,
+            line_offset=(
+                None if is_linetable and i.line_offset == -128 else i.line_offset
+            ),
             bytecode_offset=i.bytecode_offset,
         )
         for i in items
@@ -245,9 +245,11 @@ def expand_items(items: CollapsedItems, is_linetable: bool) -> ExpandedItems:
             while bytecode_offset > MAX_BYTECODE:
                 expanded_items.append(
                     LineTableItem(
-                        line_offset=(-128 if line_offset is None else line_offset)
-                        if is_linetable
-                        else 0,
+                        line_offset=(
+                            (-128 if line_offset is None else line_offset)
+                            if is_linetable
+                            else 0
+                        ),
                         bytecode_offset=MAX_BYTECODE,
                     )
                 )
