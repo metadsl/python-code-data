@@ -115,7 +115,7 @@ def from_code_data(code_data: CodeData) -> CodeType:
         flags_data |= FN_FLAGS
         if code_data.type.type is not None:
             flags_data |= {code_data.type.type}
-    (code, line_mapping, names, varnames, cellvars, constants) = blocks_to_bytes(
+    code, line_mapping, names, varnames, cellvars, constants = blocks_to_bytes(
         code_data.blocks,
         code_data._additional_args,
         code_data.freevars,
