@@ -116,9 +116,11 @@ def code_to_primitives(code: CodeType) -> dict[str, object]:
                 for a in code.co_consts
             )
             if name == "co_consts"
-            else [(i.opname, i.argval) for i in _get_instructions_bytes(code.co_code)]
-            if name == "co_code"
-            else getattr(code, name)
+            else (
+                [(i.opname, i.argval) for i in _get_instructions_bytes(code.co_code)]
+                if name == "co_code"
+                else getattr(code, name)
+            )
         )
         for name in code_attributes
     }

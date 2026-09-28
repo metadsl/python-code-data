@@ -1,6 +1,7 @@
 """
 Transform Python code objects into data, and vice versa.
 """
+
 from __future__ import annotations
 
 from collections import OrderedDict
