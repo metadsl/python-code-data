@@ -9,9 +9,8 @@ import ctypes
 import dis
 import sys
 from dataclasses import dataclass, field, replace
-from typing import Callable, Generic, Hashable, Iterable, Optional, Tuple, TypeVar
-
 from opcode import HAVE_ARGUMENT
+from typing import Callable, Generic, Hashable, Iterable, Optional, Tuple, TypeVar
 
 from . import (
     AdditionalArgs,
